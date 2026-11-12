@@ -33,7 +33,8 @@ def answer_question(question: str) -> str:
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": question},
     ]
-    return chat_one_turn(messages)
+    # chat_one_turn دیکشنری برمی‌گرداند؛ برای eval فقط جواب متنی لازم است
+    return chat_one_turn(messages)["reply"]
 
 
 def score_answer(answer: str, expected_keyword: str) -> int:

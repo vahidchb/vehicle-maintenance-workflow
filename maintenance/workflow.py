@@ -9,6 +9,7 @@
 مراحل (هر مرحله یک شماره رهگیری می‌دهد):
 1. ثبت تجهیز (EQ) → 2. ثبت بازدید (INSP) → 3. ثبت ارزیابی (EV)
 → 4. ثبت خرابی (FLT، اختیاری) → 5. درخواست تعمیراتی (REQ)
+   (قبل از ثبت، کاربر تجهیز و خرابی را در پنجره تایید، تایید می‌کند)
 → 6. تایید درخواست → 7. حکم کار (WO)
 
 بدون هیچ فریم‌ورکی؛ فقط تابع‌های ساده پایتون.
@@ -26,7 +27,7 @@ WORKFLOW_STAGES = [
     {"key": "fault", "name": "ثبت خرابی", "prefix": "FLT",
      "description": "خرابی مشاهده‌شده، وصل به یک ارزیابی. (اختیاری)"},
     {"key": "repair_request", "name": "ثبت درخواست تعمیراتی", "prefix": "REQ",
-     "description": "درخواست تعمیراتی که خرابی در آن هست."},
+     "description": "درخواست تعمیراتی که خرابی در آن هست؛ قبل از ثبت، کاربر در پنجره تایید، تجهیز و خرابی را تایید می‌کند."},
     {"key": "approval", "name": "تایید درخواست", "prefix": "REQ",
      "description": "کاربر درخواست تعمیراتی را تایید می‌کند."},
     {"key": "work_order", "name": "ثبت حکم کار", "prefix": "WO",
@@ -132,11 +133,18 @@ def register_fault_step(evaluation_id: str, description: str, subsystem: str = "
 
 def register_repair_request_step(evaluation_id: str, fault_id: str = "",
                                  description: str = "") -> dict:
-    """قدم 5: درخواست تعمیراتی ثبت کن؛ اول باید ارزیابی ثبت شده باشد."""
-    if store.get_evaluation(evaluation_id) is None:
+    """قدم 5: درخواست تعمیراتی آماده کن؛ اول باید ارزیابی ثبت شده باشد.
+
+    درخواست اینجا «ثبت» نمی‌شود؛ فقط یک تاییدیه در انتظار ساخته می‌شود.
+    کاربر باید تجهیز و خرابی را در پنجره تایید ببیند و تایید یا رد کند.
+    تا وقتی تایید نشده، مرحله workflow جلو نمی‌رود.
+    """
+    evaluation = store.get_evaluation(evaluation_id)
+    if evaluation is None:
         return {"ok": False, "tracking": None,
                 "message": "نمی‌توانم درخواست ثبت کنم؛ مرحله «ثبت ارزیابی» هنوز انجام نشده است. "
                            f"ارزیابی‌ای با شماره {evaluation_id} پیدا نشد."}
+    fault = None
     if fault_id:
         fault = store.get_fault(fault_id)
         if fault is None or fault["evaluation_id"] != evaluation_id.strip().upper():
@@ -146,8 +154,45 @@ def register_repair_request_step(evaluation_id: str, fault_id: str = "",
         # اگر خرابی گفته نشد ولی ارزیابی خرابی دارد، آخرین خرابی را وصل کن.
         faults = store.faults_for_evaluation(evaluation_id)
         if faults:
-            fault_id = faults[-1]["tracking"]
-    record = store.add_repair_request(evaluation_id, fault_id, description)
+            fault = faults[-1]
+            fault_id = fault["tracking"]
+
+    vehicle = store.get_vehicle(evaluation["plate"])
+    equipment_name = vehicle["name"] if vehicle else ""
+    pending = store.add_pending_confirmation(
+        plate=evaluation["plate"],
+        equipment_name=equipment_name,
+        evaluation_id=evaluation_id,
+        fault_id=fault_id,
+        fault_description=fault["description"] if fault else "",
+        description=description,
+    )
+    return {"ok": True, "needs_confirmation": True,
+            "confirmation_id": pending["confirmation_id"],
+            "summary": dict(pending),
+            "message": "درخواست تعمیراتی آماده شد ولی هنوز ثبت نشده است؛ "
+                       "پنجره تایید برای کاربر باز می‌شود تا تجهیز و خرابی را تایید یا رد کند.\n"
+                       f"تجهیز: {equipment_name} (پلاک {evaluation['plate']})\n"
+                       f"خرابی: {fault['description'] if fault else '—'}"}
+
+
+def confirm_repair_request_step(confirmation_id: str, confirmed: bool) -> dict:
+    """قدم 5 (ادامه): تاییدیه در انتظار را تایید یا رد کن.
+
+    تایید → درخواست تعمیراتی واقعا ثبت می‌شود و شماره رهگیری REQ می‌گیرد.
+    رد → تاییدیه پاک می‌شود و هیچ درخواستی ثبت نمی‌شود.
+    """
+    pending = store.get_pending_confirmation(confirmation_id)
+    if pending is None:
+        return {"ok": False, "tracking": None,
+                "message": f"تاییدیه‌ای با شماره {confirmation_id} پیدا نشد؛ "
+                           "شاید قبلاً تایید یا رد شده است."}
+    store.remove_pending_confirmation(confirmation_id)
+    if not confirmed:
+        return {"ok": True, "tracking": None,
+                "message": "درخواست تعمیراتی لغو شد و ثبت نشد."}
+    record = store.add_repair_request(
+        pending["evaluation_id"], pending["fault_id"], pending["description"])
     return {"ok": True, "tracking": record["tracking"],
             "message": f"درخواست تعمیراتی ثبت شد. شماره رهگیری: {record['tracking']}\n"
                        "مرحله بعدی: تایید درخواست"}

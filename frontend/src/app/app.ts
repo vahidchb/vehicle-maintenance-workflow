@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ApiService, ModuleInfo, StageInfo } from './api.service';
+import { ApiService, ModuleInfo, PendingConfirmation, StageInfo } from './api.service';
 
 interface ChatMessage {
   role: 'user' | 'bot';
@@ -107,6 +107,10 @@ export class App {
   maxTokens = signal(4000);
   sessionId: string | null = null;
 
+  // --- مودال تایید درخواست تعمیراتی ---
+  pendingConfirmation = signal<PendingConfirmation | null>(null);
+  confirming = signal(false);
+
   // --- گرید ---
   gridModuleKey = signal('');
   gridModuleName = signal('');
@@ -143,6 +147,10 @@ export class App {
           ...list,
           { role: 'bot', text: res.reply, usedTool: res.used_tool },
         ]);
+        // اگر درخواست تعمیراتی آماده شده باشد، مودال تایید را باز کن
+        if (res.pending_confirmation) {
+          this.pendingConfirmation.set(res.pending_confirmation);
+        }
         this.loading.set(false);
       },
       error: () => {
@@ -158,6 +166,36 @@ export class App {
   // --- ناوبری سایدبار ---
   goChat() {
     this.view.set('chat');
+  }
+
+  // تایید یا رد درخواست تعمیراتی از مودال؛ نتیجه به‌صورت پیام چت اضافه می‌شود
+  confirmRepairRequest(confirmed: boolean) {
+    const pending = this.pendingConfirmation();
+    if (!pending || this.confirming()) return;
+
+    this.confirming.set(true);
+    this.api.confirmRepairRequest(pending.confirmation_id, confirmed).subscribe({
+      next: (res) => {
+        this.messages.update((list) => [...list, { role: 'bot', text: res.message }]);
+        this.pendingConfirmation.set(null);
+        this.confirming.set(false);
+      },
+      error: () => {
+        this.messages.update((list) => [
+          ...list,
+          { role: 'bot', text: 'خطا: نتوانستم تایید را ثبت کنم؛ API پایتون را چک کن.' },
+        ]);
+        this.pendingConfirmation.set(null);
+        this.confirming.set(false);
+      },
+    });
+  }
+
+  // کلاس بج وضعیت، بر اساس مقدار فیلد status
+  statusClass(value: unknown): string {
+    if (value === 'تایید شده') return 'badge badge-ok';
+    if (value === 'در انتظار تایید') return 'badge badge-wait';
+    return 'badge badge-info';
   }
 
   // آیکن‌های عملیاتی: یک پیام آماده در چت می‌گذارند، فرم ندارند

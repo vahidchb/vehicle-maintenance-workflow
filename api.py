@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from maintenance import config, store
 from maintenance.chat import SYSTEM_PROMPT, chat_one_turn
 from maintenance.memory import count_messages_tokens, needs_compaction, compact_messages
-from maintenance.workflow import WORKFLOW_STAGES
+from maintenance.workflow import WORKFLOW_STAGES, confirm_repair_request_step
 
 app = FastAPI(title="Vehicle Maintenance Workflow")
 
@@ -59,6 +59,19 @@ class ChatResponse(BaseModel):
     tokens: int
     max_tokens: int
     used_tool: bool
+    # اگر در این دور درخواست تعمیراتی آماده شده باشد، پنجره تایید با این اطلاعات باز می‌شود
+    pending_confirmation: dict | None = None
+
+
+class ConfirmRequest(BaseModel):
+    confirmation_id: str
+    confirmed: bool
+
+
+class ConfirmResponse(BaseModel):
+    ok: bool
+    tracking: str | None = None
+    message: str
 
 
 @app.get("/api/health")
@@ -88,15 +101,31 @@ def chat(req: ChatRequest):
         messages[:] = compact_messages(messages)
 
     before = len(messages)
-    reply = chat_one_turn(messages)
+    result = chat_one_turn(messages)
     used_tool = any(m.get("role") == "tool" for m in messages[before:])
 
     return ChatResponse(
-        reply=reply,
+        reply=result["reply"],
         session_id=session_id,
         tokens=count_messages_tokens(messages),
         max_tokens=config.MAX_TOKENS,
         used_tool=used_tool,
+        pending_confirmation=result["pending_confirmation"],
+    )
+
+
+@app.post("/api/confirm-repair-request", response_model=ConfirmResponse)
+def confirm_repair_request(req: ConfirmRequest):
+    """تاییدیه در انتظار درخواست تعمیراتی را تایید یا رد کن.
+
+    تایید → درخواست ثبت می‌شود و شماره رهگیری REQ می‌گیرد.
+    رد → تاییدیه پاک می‌شود و هیچ درخواستی ثبت نمی‌شود.
+    """
+    outcome = confirm_repair_request_step(req.confirmation_id, req.confirmed)
+    return ConfirmResponse(
+        ok=outcome["ok"],
+        tracking=outcome["tracking"],
+        message=outcome["message"],
     )
 
 

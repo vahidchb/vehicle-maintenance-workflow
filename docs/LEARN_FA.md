@@ -58,16 +58,22 @@ maintenance/memory.py → شمارش توکن + compaction
 «کنترل می‌کند» که ترتیب رعایت شود. اگر مثلا ارزیابی ثبت نشده باشد،
 ثبت خرابی با پیام فارسی رد می‌شود.
 
+قدم ۵ (درخواست تعمیراتی) کمی فرق می‌کند: درخواست مستقیم ثبت نمی‌شود؛
+اول یک «تاییدیه در انتظار» ساخته می‌شود و پنجره تایید در Angular باز می‌شود
+تا کاربر تجهیز و خرابی را ببیند و تایید یا رد کند.
+فقط با تایید، درخواست ثبت می‌شود و شماره REQ می‌گیرد؛ با رد، هیچ درخواستی ثبت نمی‌شود.
+تا وقتی تایید نشده، مرحله workflow هم جلو نمی‌رود.
+
 ## ۴. هر فایل چیکار می‌کند؟
 
 | فایل | کارش در یک جمله | تابع‌های مهم |
 |---|---|---|
 | `main.py` | شروع نسخه ترمینالی | `run_chat()` را صدا می‌زند |
-| `api.py` | شروع نسخه وب | `chat()` ، `modules()` ، `records()` |
+| `api.py` | شروع نسخه وب | `chat()` ، `confirm_repair_request()` ، `modules()` ، `records()` |
 | `maintenance/config.py` | خواندن کلیدها از `.env` | `get_setting()` ، `check_config()` |
 | `maintenance/llm.py` | حرف زدن با مدل | `create_client()` ، `ask()` ، `ask_text()` |
-| `maintenance/store.py` | رکوردها در حافظه | `add_*()` ، `get_*()` ، `list_*()` ، `next_tracking()` |
-| `maintenance/workflow.py` | ترتیب قدم‌ها + کنترل | `current_stage()` ، `register_*_step()` |
+| `maintenance/store.py` | رکوردها در حافظه (+ تاییدیه‌های در انتظار) | `add_*()` ، `get_*()` ، `list_*()` ، `next_tracking()` ، `add_pending_confirmation()` |
+| `maintenance/workflow.py` | ترتیب قدم‌ها + کنترل | `current_stage()` ، `register_*_step()` ، `confirm_repair_request_step()` |
 | `maintenance/tools.py` | ابزارهای مدل | `register_*()` ، `search_*()` ، `run_tool()` |
 | `maintenance/memory.py` | توکن و خلاصه‌سازی | `count_tokens()` ، `needs_compaction()` ، `compact_messages()` |
 | `maintenance/chat.py` | حلقه اصلی چت | `run_chat()` ، `chat_one_turn()` |
@@ -107,9 +113,11 @@ maintenance/memory.py → شمارش توکن + compaction
 ## ۸. Angular چطور وصل می‌شود؟
 
 - `frontend/src/app/api.service.ts`: تابع‌های `send()` برای چت،
-  `getModules()` برای نمودار ماژول‌ها، و `getRecords()` برای گریدها.
+  `getModules()` برای نمودار ماژول‌ها، و `getRecords()` برای گریدها،
+  و `confirmRepairRequest()` برای تایید یا رد درخواست تعمیراتی از مودال.
 - `frontend/src/app/app.ts`: نما را نگه می‌دارد (چت، گرید، نمودار ماژول‌ها)،
-  پیام‌ها و توکن‌ها را نشان می‌دهد.
+  پیام‌ها و توکن‌ها را نشان می‌دهد؛ اگر جواب چت `pending_confirmation` داشته باشد،
+  مودال تایید درخواست تعمیراتی را باز می‌کند.
 - **هیچ فرم ورودی نیست.** همه ثبت‌ها با چت انجام می‌شود؛
   گریدها فقط رکوردها را نشان می‌دهند و با کلیک روی هر ردیف، جزئیاتش دیده می‌شود.
 - `api.py`: همان `chat_one_turn()` پایتون را صدا می‌زند. یعنی منطق چت فقط یک جاست؛

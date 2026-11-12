@@ -75,13 +75,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "register_fault",
-            "description": "یک خرابی برای یک ارزیابی ثبت کن. اول باید ارزیابی ثبت شده باشد.",
+            "description": "یک خرابی برای یک ارزیابی ثبت کن. شرح کوتاه کاربر کافی است؛ علت یا جزئیات لازم نیست. اول باید ارزیابی ثبت شده باشد.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "evaluation_id": {"type": "string", "description": "شماره رهگیری ارزیابی، مثلا 'EV-001'"},
-                    "description": {"type": "string", "description": "شرح خرابی"},
-                    "subsystem": {"type": "string", "description": "زیرمجموعه، مثلا 'موتور'"},
+                    "description": {"type": "string", "description": "شرح کوتاه خرابی، همان‌طور که کاربر گفت"},
+                    "subsystem": {"type": "string", "description": "زیرمجموعه، مثلا 'موتور' — اختیاری است؛ اگر کاربر نگفت خالی بگذار"},
                 },
                 "required": ["evaluation_id", "description"],
             },
@@ -91,7 +91,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "register_repair_request",
-            "description": "برای یک ارزیابی، درخواست تعمیراتی ثبت کن که خرابی در آن هست.",
+            "description": "برای یک ارزیابی، درخواست تعمیراتی آماده کن. درخواست مستقیم ثبت نمی‌شود؛ اول پنجره تایید برای کاربر باز می‌شود تا تجهیز و خرابی را تایید یا رد کند.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -235,12 +235,12 @@ def register_evaluation(plate: str, inspection_id: str, summary: str) -> str:
 
 
 def register_fault(evaluation_id: str, description: str, subsystem: str = "") -> str:
-    """قدم 4 workflow: خرابی ثبت کن."""
+    """قدم 4 workflow: خرابی ثبت کن. شرح کوتاه کافی است؛ علت نمی‌پرسیم."""
     return workflow.register_fault_step(evaluation_id, description, subsystem)["message"]
 
 
 def register_repair_request(evaluation_id: str, fault_id: str = "", description: str = "") -> str:
-    """قدم 5 workflow: درخواست تعمیراتی ثبت کن."""
+    """قدم 5 workflow: درخواست تعمیراتی آماده کن (ثبت واقعی بعد از تایید کاربر)."""
     return workflow.register_repair_request_step(evaluation_id, fault_id, description)["message"]
 
 

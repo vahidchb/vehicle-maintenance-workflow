@@ -1,3 +1,10 @@
-/* استایل کلی — ساده و تمیز */
+/* استایل کلی — بک‌گراند رنگی ملایم، کارت‌های سفید، ظاهر سازمانی */
 * { box-sizing: border-box; }
-body { margin: 0; background: #f6f7f9; color: #1f2430; font-family: Tahoma, sans-serif; }
+body {
+  margin: 0;
+  /* گرادیان ملایم ایندیگو ← آبی ← سبز نعنایی؛ ثابت می‌ماند */
+  background: linear-gradient(155deg, #eef2ff 0%, #e0f2fe 48%, #ecfdf5 100%);
+  background-attachment: fixed;
+  color: #1e293b;
+  font-family: Tahoma, sans-serif;
+}

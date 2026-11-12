@@ -8,6 +8,25 @@ export interface ChatReply {
   tokens: number;
   max_tokens: number;
   used_tool: boolean;
+  // اگر در این دور درخواست تعمیراتی آماده شده باشد، با این اطلاعات مودال تایید باز می‌شود
+  pending_confirmation: PendingConfirmation | null;
+}
+
+// تاییدیه در انتظار درخواست تعمیراتی — همان چیزی که مودال نشان می‌دهد
+export interface PendingConfirmation {
+  confirmation_id: string;
+  plate: string;
+  equipment: string;
+  evaluation_id: string;
+  fault_id: string;
+  fault: string;
+  description: string;
+}
+
+export interface ConfirmResult {
+  ok: boolean;
+  tracking: string | null;
+  message: string;
 }
 
 export interface ModuleInfo {
@@ -44,6 +63,14 @@ export class ApiService {
     return this.http.post<ChatReply>(`${this.base}/chat`, {
       message,
       session_id: sessionId,
+    });
+  }
+
+  // تایید یا رد درخواست تعمیراتی آماده‌شده (از مودال تایید)
+  confirmRepairRequest(confirmationId: string, confirmed: boolean): Observable<ConfirmResult> {
+    return this.http.post<ConfirmResult>(`${this.base}/confirm-repair-request`, {
+      confirmation_id: confirmationId,
+      confirmed,
     });
   }
 

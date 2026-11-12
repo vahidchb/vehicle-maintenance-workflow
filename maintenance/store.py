@@ -13,6 +13,9 @@ evaluations: dict[str, dict] = {}
 faults: dict[str, dict] = {}
 requests: dict[str, dict] = {}
 work_orders: dict[str, dict] = {}
+# تاییدیه‌های در انتظار: درخواست تعمیراتی آماده شده ولی هنوز ثبت نشده؛
+# کاربر باید اول تجهیز و خرابی را در پنجره تایید، تایید یا رد کند.
+pending_confirmations: dict[str, dict] = {}
 
 # شمارنده هر پیشوند، برای ساختن شماره رهگیری
 _counters: dict[str, int] = {}
@@ -32,6 +35,7 @@ def reset() -> None:
     faults.clear()
     requests.clear()
     work_orders.clear()
+    pending_confirmations.clear()
     _counters.clear()
 
 
@@ -161,6 +165,39 @@ def approve_request(tracking: str) -> dict | None:
         return None
     record["status"] = "تایید شده"
     return record
+
+
+# --- تاییدیه در انتظار (قبل از ثبت درخواست تعمیراتی) ---
+def add_pending_confirmation(plate: str, equipment_name: str, evaluation_id: str,
+                             fault_id: str, fault_description: str,
+                             description: str = "") -> dict:
+    """یک درخواست تعمیراتی آماده کن که هنوز ثبت نشده و منتظر تایید کاربر است."""
+    record = {
+        "confirmation_id": next_tracking("CONF"),
+        "plate": plate.strip(),
+        "equipment": equipment_name,
+        "evaluation_id": evaluation_id.strip().upper(),
+        "fault_id": fault_id.strip().upper() if fault_id else "",
+        "fault": fault_description,
+        "description": description,
+    }
+    pending_confirmations[record["confirmation_id"]] = record
+    return record
+
+
+def get_pending_confirmation(confirmation_id: str) -> dict | None:
+    """تاییدیه در انتظار را با شماره‌اش پیدا کن."""
+    return pending_confirmations.get(confirmation_id.strip().upper())
+
+
+def list_pending_confirmations() -> list[dict]:
+    """همه تاییدیه‌های در انتظار را برگردان."""
+    return list(pending_confirmations.values())
+
+
+def remove_pending_confirmation(confirmation_id: str) -> dict | None:
+    """تاییدیه در انتظار را حذف کن (بعد از تایید یا رد)؛ اگر نبود None برگردان."""
+    return pending_confirmations.pop(confirmation_id.strip().upper(), None)
 
 
 # --- حکم کار ---
