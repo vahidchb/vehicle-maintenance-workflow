@@ -1,0 +1,3 @@
+/* استایل کلی — ساده و تمیز */
+* { box-sizing: border-box; }
+body { margin: 0; background: #f6f7f9; color: #1f2430; font-family: Tahoma, sans-serif; }

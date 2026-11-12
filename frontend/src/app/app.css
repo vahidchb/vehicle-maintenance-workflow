@@ -1,0 +1,120 @@
+/* یوآی سازمانی ساده و شیک — کارت سفید، آیکن‌های تمیز، رنگ ایندیگو */
+.layout { display: flex; min-height: 100vh; }
+
+/* سایدبار باریک آیکن‌ها */
+.sidebar {
+  width: 92px; flex-shrink: 0;
+  background: #fff; border-left: 1px solid #e8eaf0;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 0; gap: 6px;
+  position: sticky; top: 0; height: 100vh;
+}
+.brand {
+  width: 46px; height: 46px; border-radius: 14px;
+  background: #4f46e5; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+}
+.brand svg { width: 24px; height: 24px; }
+.sidebar nav { display: flex; flex-direction: column; gap: 4px; }
+.sidebar button {
+  width: 72px; padding: 10px 2px 8px;
+  border: none; background: transparent; border-radius: 14px;
+  color: #6b7280; cursor: pointer; font-family: inherit; font-size: 11px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.sidebar button svg { width: 22px; height: 22px; }
+.sidebar button:hover { background: #f6f7f9; color: #1f2430; }
+.sidebar button.active { background: #eef2ff; color: #4f46e5; }
+
+/* ناحیه اصلی */
+.main { flex: 1; padding: 24px; max-width: 920px; margin: 0 auto; width: 100%; }
+.card {
+  background: #fff; border: 1px solid #e8eaf0; border-radius: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06); padding: 20px;
+}
+header { text-align: center; padding-bottom: 12px; border-bottom: 1px solid #eef0f4; }
+header h1 { font-size: 22px; margin: 0 0 6px; color: #1f2430; }
+header .subtitle { color: #6b7280; font-size: 13px; margin: 0; }
+.muted { color: #6b7280; text-align: center; padding: 32px 0; }
+.error { color: #b91c1c; text-align: center; padding: 32px 0; }
+
+/* چت */
+.token-bar { height: 8px; background: #eef0f4; border-radius: 99px; overflow: hidden; margin: 14px 0 6px; }
+.token-fill { height: 100%; background: #4f46e5; border-radius: 99px; transition: width 0.3s ease; }
+.tokens { font-size: 12px; color: #4f46e5; margin: 0; }
+.messages { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; min-height: 320px; }
+.message { padding: 12px 14px; border-radius: 16px; max-width: 85%; line-height: 1.8; white-space: pre-wrap; }
+.message p { margin: 0; }
+.message.user { background: #4f46e5; color: #fff; align-self: flex-start; border-bottom-right-radius: 4px; }
+.message.bot { background: #f1f2f6; color: #1f2430; align-self: flex-end; border-bottom-left-radius: 4px; }
+.tool { display: block; font-size: 12px; color: #047857; margin-top: 8px; }
+.typing { color: #6b7280; }
+.composer { display: flex; gap: 8px; }
+.composer input {
+  flex: 1; padding: 12px 14px; border: 1px solid #dfe3ea; border-radius: 12px;
+  font-family: inherit; font-size: 14px; outline: none;
+}
+.composer input:focus { border-color: #4f46e5; }
+.composer button {
+  padding: 12px 18px; border: none; border-radius: 12px;
+  background: #4f46e5; color: #fff; cursor: pointer; font-family: inherit;
+}
+.composer button:disabled { opacity: 0.5; cursor: default; }
+.hint { text-align: center; color: #9ca3af; font-size: 12px; margin: 10px 0 0; }
+
+/* گرید */
+.grid-header { margin-bottom: 16px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: right; font-size: 12px; color: #6b7280; font-weight: normal; padding: 10px; border-bottom: 1px solid #eef0f4; white-space: nowrap; }
+td { padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; vertical-align: top; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: #f9fafb; }
+tbody tr.selected { background: #eef2ff; }
+.tracking {
+  font-family: monospace; font-size: 12px; white-space: nowrap;
+  background: #eef2ff; color: #4f46e5; padding: 2px 8px; border-radius: 99px;
+}
+.detail { margin-top: 20px; border: 1px solid #eef0f4; border-radius: 16px; padding: 16px; background: #fafbfc; }
+.detail-head { display: flex; justify-content: space-between; align-items: center; }
+.detail-head h2 { font-size: 16px; margin: 0; }
+.close { border: none; background: none; cursor: pointer; font-size: 16px; color: #6b7280; }
+.detail dl { margin: 12px 0 0; }
+.detail-row { display: flex; gap: 12px; padding: 6px 0; border-top: 1px solid #eef0f4; }
+.detail-row dt { color: #6b7280; font-size: 13px; min-width: 120px; }
+.detail-row dd { margin: 0; font-size: 13px; }
+
+/* نمودار ماژول‌ها */
+.steps { display: flex; flex-direction: column; margin-top: 20px; }
+.step {
+  display: flex; align-items: center; gap: 14px; text-align: right;
+  border: 1px solid #e8eaf0; border-radius: 16px; background: #fff;
+  padding: 14px 16px; cursor: pointer; font-family: inherit; width: 100%;
+}
+.step:hover { border-color: #4f46e5; background: #fafbff; }
+.step-num {
+  width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%;
+  background: #eef2ff; color: #4f46e5; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+}
+.step-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.step-name { font-size: 15px; color: #1f2430; }
+.step-desc { font-size: 12px; color: #6b7280; }
+.step-count {
+  font-size: 12px; color: #4f46e5; background: #eef2ff;
+  padding: 4px 10px; border-radius: 99px; white-space: nowrap;
+}
+.step-arrow { text-align: center; color: #c7cbd6; font-size: 16px; line-height: 1.4; }
+
+@media (max-width: 720px) {
+  .layout { flex-direction: column; }
+  .sidebar {
+    width: 100%; height: auto; position: static;
+    flex-direction: row; padding: 8px; overflow-x: auto;
+  }
+  .brand { margin-bottom: 0; flex-shrink: 0; }
+  .sidebar nav { flex-direction: row; }
+  .main { padding: 12px; }
+  .chat-card { border-radius: 16px; }
+}

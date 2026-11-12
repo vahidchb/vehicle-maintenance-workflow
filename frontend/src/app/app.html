@@ -1,0 +1,173 @@
+<div class="layout">
+  <!-- سایدبار آیکن‌ها — باریک و ساده -->
+  <aside class="sidebar">
+    <div class="brand" title="نگهداری و تعمیرات">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+    </div>
+    <nav>
+      <button (click)="goChat()" [class.active]="view() === 'chat'" title="چت">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg>
+        <span>چت</span>
+      </button>
+      <button (click)="startArticleSearch()" title="سرچ مقاله">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+        <span>سرچ مقاله</span>
+      </button>
+      <button (click)="startEvaluation()" title="ثبت ارزیابی">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+        <span>ثبت ارزیابی</span>
+      </button>
+      <button (click)="openGrid('equipment')" [class.active]="view() === 'grid' && gridModuleKey() === 'equipment'" title="سرچ خودرو">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17v-2l2-5a2 2 0 0 1 1.9-1.3h10.2A2 2 0 0 1 19 10l2 5v2"/><path d="M3 17h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/></svg>
+        <span>سرچ خودرو</span>
+      </button>
+      <button (click)="openGrid('requests')" [class.active]="view() === 'grid' && gridModuleKey() === 'requests'" title="سرچ درخواست">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span>سرچ درخواست</span>
+      </button>
+      <button (click)="openGrid('work_orders')" [class.active]="view() === 'grid' && gridModuleKey() === 'work_orders'" title="سرچ حکم کار">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg>
+        <span>سرچ حکم کار</span>
+      </button>
+      <button (click)="openModules()" [class.active]="view() === 'modules'" title="نمودار ماژول‌ها">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>نمودار ماژول‌ها</span>
+      </button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <!-- نمای چت -->
+    @if (view() === 'chat') {
+      <section class="card chat-card">
+        <header>
+          <h1>چت‌بات نگهداری و تعمیرات</h1>
+          <p class="subtitle">Workflow صریح • مدیریت توکن • Compaction • Eval با LangSmith</p>
+          <div class="token-bar">
+            <div class="token-fill" [style.width.%]="tokenPercent()"></div>
+          </div>
+          <p class="tokens">توکن‌ها: {{ tokens() }} از {{ maxTokens() }}</p>
+        </header>
+
+        <div class="messages">
+          @for (msg of messages(); track $index) {
+            <div class="message" [class.user]="msg.role === 'user'" [class.bot]="msg.role === 'bot'">
+              <p>{{ msg.text }}</p>
+              @if (msg.usedTool) {
+                <span class="tool">🔧 از ابزار workflow استفاده شد</span>
+              }
+            </div>
+          }
+          @if (loading()) {
+            <div class="message bot typing"><p>در حال فکر کردن…</p></div>
+          }
+        </div>
+
+        <footer>
+          <div class="composer">
+            <input
+              [(ngModel)]="input"
+              (keyup.enter)="send()"
+              placeholder="پیامت را بنویس…"
+              [disabled]="loading()"
+            />
+            <button (click)="send()" [disabled]="loading()">ارسال</button>
+          </div>
+          <p class="hint">همه ثبت‌ها با چت انجام می‌شود؛ گریدها فقط برای دیدن رکوردها هستند.</p>
+        </footer>
+      </section>
+    }
+
+    <!-- نمای گرید یک ماژول -->
+    @if (view() === 'grid') {
+      <section class="card">
+        <header class="grid-header">
+          <h1>{{ gridModuleName() || '…' }}</h1>
+          <p class="subtitle">{{ gridRecords().length }} رکورد — روی هر ردیف کلیک کن تا جزئیاتش را ببینی</p>
+        </header>
+
+        @if (gridLoading()) {
+          <p class="muted">در حال بارگذاری…</p>
+        } @else if (gridError()) {
+          <p class="error">{{ gridError() }}</p>
+        } @else if (gridRecords().length === 0) {
+          <p class="muted">هنوز رکوردی ثبت نشده است. با چت ثبت کن.</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  @for (col of gridColumns(); track col.key) {
+                    <th>{{ col.label }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (rec of gridRecords(); track rec['tracking']) {
+                  <tr (click)="selectRecord(rec)" [class.selected]="selectedRecord() === rec">
+                    @for (col of gridColumns(); track col.key) {
+                      <td>
+                        @if (col.key === 'tracking') {
+                          <span class="tracking">{{ rec[col.key] }}</span>
+                        } @else {
+                          {{ rec[col.key] }}
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (selectedRecord()) {
+          <div class="detail">
+            <div class="detail-head">
+              <h2>جزئیات {{ selectedRecord()!['tracking'] }}</h2>
+              <button class="close" (click)="closeDetail()">✕</button>
+            </div>
+            <dl>
+              @for (entry of detailEntries(); track entry.label) {
+                <div class="detail-row">
+                  <dt>{{ entry.label }}</dt>
+                  <dd>{{ entry.value }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- نمای نمودار ماژول‌ها -->
+    @if (view() === 'modules') {
+      <section class="card">
+        <header>
+          <h1>نمودار ماژول‌ها</h1>
+          <p class="subtitle">مراحل workflow به ترتیب — روی هر مرحله کلیک کن تا رکوردهایش را ببینی</p>
+        </header>
+
+        @if (modulesLoading()) {
+          <p class="muted">در حال بارگذاری…</p>
+        } @else {
+          <div class="steps">
+            @for (stage of stages(); track stage.key; let last = $last) {
+              <button class="step" (click)="openStageModule(stage.key)">
+                <span class="step-num">{{ $index + 1 }}</span>
+                <span class="step-body">
+                  <span class="step-name">{{ stage.name }}</span>
+                  <span class="step-desc">{{ stage.description }}</span>
+                </span>
+                <span class="step-count">{{ countForStage(stage.key) }} رکورد</span>
+              </button>
+              @if (!last) {
+                <div class="step-arrow">↓</div>
+              }
+            }
+          </div>
+        }
+      </section>
+    }
+  </main>
+</div>
