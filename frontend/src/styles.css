@@ -1,10 +1,14 @@
-/* استایل کلی — بک‌گراند رنگی ملایم، کارت‌های سفید، ظاهر سازمانی */
+/* استایل کلی — تم تیره سبز (الگو: شات SmartChat در Dribbble) */
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  /* گرادیان ملایم ایندیگو ← آبی ← سبز نعنایی؛ ثابت می‌ماند */
-  background: linear-gradient(155deg, #eef2ff 0%, #e0f2fe 48%, #ecfdf5 100%);
+  background-color: #010504;
+  /* درخشش‌های ملایم: زمردی بالا-چپ، آبی-سبز بالا-راست، سبز جنگلی پایین؛ بقیه تیره ساده */
+  background-image:
+    radial-gradient(640px 420px at 12% -6%, rgba(4, 163, 111, 0.28), transparent 65%),
+    radial-gradient(560px 380px at 92% -4%, rgba(98, 159, 176, 0.22), transparent 65%),
+    radial-gradient(520px 480px at 50% 115%, rgba(40, 87, 72, 0.22), transparent 70%);
   background-attachment: fixed;
-  color: #1e293b;
+  color: #e9f4ef;
   font-family: Tahoma, sans-serif;
 }

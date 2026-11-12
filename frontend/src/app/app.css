@@ -1,19 +1,33 @@
-/* یوآی سازمانی رنگی — سایدبار سرمه‌ای گرادیان، کارت سفید، گرید شیک */
+/* تم تیره سبز — الگو: شات SmartChat در Dribbble
+   پالت: بک‌گراند #010504، گرادیان نعنایی #70E0C2 ← آبی-سبز #629FB0، زمردی #04A36F */
+:host {
+  --mint: #70e0c2;
+  --sage: #5eb098;
+  --teal: #629fb0;
+  --grad: linear-gradient(135deg, #70e0c2, #629fb0);
+  --card2: #0a1f16;
+  --line: rgba(112, 224, 194, 0.16);
+  --line2: rgba(112, 224, 194, 0.32);
+  --text: #f2f7f4;
+  --muted: #9db8ad;
+  --muted2: #7fa292;
+  --dark-text: #01251c;
+}
 .layout { display: flex; min-height: 100vh; }
 
-/* سایدبار — گرادیان سرمه‌ای/ایندیگو */
+/* سایدبار تیره با بوردر نعنایی */
 .sidebar {
   width: 104px; flex-shrink: 0;
-  background: linear-gradient(180deg, #1e1b4b 0%, #312e81 55%, #1e3a8a 100%);
+  background: linear-gradient(180deg, #020a07 0%, #04160f 100%);
+  border-left: 1px solid var(--line);
   display: flex; flex-direction: column; align-items: center;
   padding: 18px 0; gap: 6px;
   position: sticky; top: 0; height: 100vh;
-  box-shadow: 4px 0 24px rgba(30, 27, 75, 0.25);
 }
 .brand {
   width: 48px; height: 48px; border-radius: 16px;
-  background: linear-gradient(135deg, #818cf8, #22d3ee);
-  color: #fff; box-shadow: 0 6px 16px rgba(99, 102, 241, 0.45);
+  background: var(--grad); color: var(--dark-text);
+  box-shadow: 0 0 22px rgba(112, 224, 194, 0.35);
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 16px;
 }
@@ -22,189 +36,237 @@
 .sidebar button {
   width: 84px; padding: 11px 2px 9px;
   border: none; background: transparent; border-radius: 16px;
-  color: #c7d2fe; cursor: pointer; font-family: inherit; font-size: 11.5px;
+  color: #8fb3a4; cursor: pointer; font-family: inherit; font-size: 11.5px;
   display: flex; flex-direction: column; align-items: center; gap: 5px;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 .sidebar button svg { width: 23px; height: 23px; }
-.sidebar button:hover { background: rgba(255, 255, 255, 0.12); color: #fff; transform: translateY(-1px); }
-.sidebar button.active { background: rgba(255, 255, 255, 0.95); color: #312e81; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2); }
+.sidebar button:hover { background: rgba(112, 224, 194, 0.08); color: var(--text); }
+.sidebar button.active {
+  background: rgba(112, 224, 194, 0.13); color: var(--mint);
+  box-shadow: inset 0 0 0 1px var(--line2), 0 0 16px rgba(112, 224, 194, 0.15);
+}
 
 /* ناحیه اصلی */
 .main { flex: 1; padding: 26px; max-width: 940px; margin: 0 auto; width: 100%; }
 .card {
-  background: #fff; border: 1px solid rgba(255, 255, 255, 0.7); border-radius: 22px;
-  box-shadow: 0 12px 36px rgba(30, 27, 75, 0.10); padding: 22px;
+  background: linear-gradient(180deg, #081812, #06130d);
+  border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(112, 224, 194, 0.07);
+  padding: 22px;
 }
-header { text-align: center; padding-bottom: 14px; border-bottom: 1px solid #eef0f4; }
-header h1 { font-size: 22px; margin: 0 0 6px; color: #1e1b4b; }
-header .subtitle { color: #64748b; font-size: 13px; margin: 0; }
-.muted { color: #64748b; text-align: center; padding: 32px 0; }
-.error { color: #b91c1c; text-align: center; padding: 32px 0; }
+header { text-align: center; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+header h1 {
+  font-size: 22px; margin: 0 0 6px;
+  background: linear-gradient(90deg, #70e0c2, #629fb0);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+header .subtitle { color: var(--muted); font-size: 13px; margin: 0; }
+.muted { color: var(--muted); text-align: center; padding: 32px 0; }
+.error { color: #fca5a5; text-align: center; padding: 32px 0; }
 
-/* چت */
-.token-bar { height: 9px; background: #eef0f4; border-radius: 99px; overflow: hidden; margin: 14px 0 6px; }
-.token-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #22d3ee); border-radius: 99px; transition: width 0.3s ease; }
-.tokens { font-size: 12px; color: #4f46e5; margin: 0; }
+/* چت — بات: کارت سبز تیره با بوردر نعنایی؛ کاربر: گرادیان نعنایی با متن تیره */
+.token-bar { height: 9px; background: rgba(112, 224, 194, 0.12); border-radius: 99px; overflow: hidden; margin: 14px 0 6px; }
+.token-fill { height: 100%; background: var(--grad); border-radius: 99px; transition: width 0.3s ease; }
+.tokens { font-size: 12px; color: var(--mint); margin: 0; }
 .messages { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; min-height: 320px; }
-.message { padding: 12px 15px; border-radius: 18px; max-width: 85%; line-height: 1.8; white-space: pre-wrap; }
+.message { padding: 12px 15px; border-radius: 16px; max-width: 85%; line-height: 1.8; white-space: pre-wrap; }
 .message p { margin: 0; }
 .message.user {
-  background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff;
+  background: var(--grad); color: var(--dark-text); font-weight: bold;
   align-self: flex-start; border-bottom-right-radius: 5px;
-  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.30);
+  box-shadow: 0 8px 22px rgba(4, 163, 111, 0.25);
 }
 .message.bot {
-  background: #fff; color: #1e293b; align-self: flex-end; border-bottom-left-radius: 5px;
-  border: 1px solid #e8eaf0; box-shadow: 0 4px 14px rgba(30, 27, 75, 0.06);
+  background: var(--card2); color: var(--text); align-self: flex-end; border-bottom-left-radius: 5px;
+  border: 1px solid rgba(112, 224, 194, 0.20);
 }
-.tool { display: block; font-size: 12px; color: #059669; margin-top: 8px; }
-.typing { color: #64748b; }
+.tool { display: block; font-size: 12px; color: var(--mint); margin-top: 8px; }
+.typing { color: var(--muted); }
 .composer { display: flex; gap: 8px; }
 .composer input {
-  flex: 1; padding: 13px 15px; border: 1.5px solid #e2e8f0; border-radius: 14px;
-  font-family: inherit; font-size: 14px; outline: none; background: #f8fafc;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  flex: 1; padding: 13px 18px; border: 1.5px solid rgba(112, 224, 194, 0.22); border-radius: 99px;
+  font-family: inherit; font-size: 14px; outline: none; background: #04120c; color: var(--text);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.composer input:focus { border-color: #6366f1; background: #fff; }
+.composer input::placeholder { color: var(--muted2); }
+.composer input:focus { border-color: var(--mint); box-shadow: 0 0 0 3px rgba(112, 224, 194, 0.14); }
 .composer button {
-  padding: 13px 20px; border: none; border-radius: 14px;
-  background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff;
+  padding: 13px 22px; border: none; border-radius: 99px;
+  background: var(--grad); color: var(--dark-text); font-weight: bold;
   cursor: pointer; font-family: inherit; font-size: 14px;
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.30);
+  box-shadow: 0 8px 20px rgba(4, 163, 111, 0.30);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.composer button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(79, 70, 229, 0.38); }
+.composer button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(4, 163, 111, 0.38); }
 .composer button:disabled { opacity: 0.5; cursor: default; }
-.hint { text-align: center; color: #94a3b8; font-size: 12px; margin: 10px 0 0; }
+.hint { text-align: center; color: var(--muted2); font-size: 12px; margin: 10px 0 0; }
 
-/* گرید — کارت گرد، سربرگ رنگی، ردیف‌های هوور */
+/* گرید تیره — سربرگ سبز، ردیف هوور، چیپ رهگیری */
 .grid-header { margin-bottom: 18px; }
-.table-wrap {
-  overflow-x: auto; border: 1px solid #e8eaf0; border-radius: 18px;
-  box-shadow: 0 6px 20px rgba(30, 27, 75, 0.05);
-}
-table { width: 100%; border-collapse: collapse; background: #fff; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: #06130d; }
+table { width: 100%; border-collapse: collapse; }
 thead th {
-  text-align: right; font-size: 12.5px; color: #4338ca; font-weight: bold;
-  padding: 13px 12px; background: #eef2ff; white-space: nowrap;
-  border-bottom: 2px solid #e0e7ff;
+  text-align: right; font-size: 12.5px; color: var(--mint); font-weight: bold;
+  padding: 13px 12px; background: rgba(40, 87, 72, 0.38); white-space: nowrap;
+  border-bottom: 1px solid rgba(112, 224, 194, 0.22);
 }
-thead th:first-child { border-top-right-radius: 18px; }
-thead th:last-child { border-top-left-radius: 18px; }
-td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13.5px; vertical-align: middle; color: #334155; }
+thead th:first-child { border-top-right-radius: 16px; }
+thead th:last-child { border-top-left-radius: 16px; }
+td { padding: 12px; border-bottom: 1px solid rgba(112, 224, 194, 0.08); font-size: 13.5px; vertical-align: middle; color: #d7e8e0; }
 tbody tr { cursor: pointer; transition: background 0.15s ease; }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover { background: #f8faff; }
-tbody tr.selected { background: #eef2ff; }
+tbody tr:hover { background: rgba(112, 224, 194, 0.06); }
+tbody tr.selected { background: rgba(112, 224, 194, 0.10); }
 .tracking {
   font-family: monospace; font-size: 12px; font-weight: bold; white-space: nowrap;
-  background: linear-gradient(135deg, #eef2ff, #e0f2fe); color: #4338ca;
-  padding: 3px 10px; border-radius: 99px; border: 1px solid #e0e7ff;
+  background: rgba(112, 224, 194, 0.10); color: var(--mint);
+  padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line2);
 }
-/* بج وضعیت */
-.badge {
-  font-size: 12px; font-weight: bold; white-space: nowrap;
-  padding: 4px 11px; border-radius: 99px;
-}
-.badge-ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-.badge-wait { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
-.badge-info { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
+/* بج وضعیت — نسخه تیره */
+.badge { font-size: 12px; font-weight: bold; white-space: nowrap; padding: 4px 11px; border-radius: 99px; }
+.badge-ok { background: rgba(4, 163, 111, 0.20); color: #7cf2c6; border: 1px solid rgba(4, 163, 111, 0.55); }
+.badge-wait { background: rgba(251, 191, 36, 0.12); color: #fcd34d; border: 1px solid rgba(251, 191, 36, 0.45); }
+.badge-info { background: rgba(98, 159, 176, 0.16); color: #a5d3de; border: 1px solid rgba(98, 159, 176, 0.45); }
 /* حالت خالی گرید */
 .empty-state { text-align: center; padding: 44px 16px; }
 .empty-icon { font-size: 44px; margin-bottom: 10px; }
-.empty-state p { color: #64748b; margin: 4px 0; font-size: 14px; }
-.empty-state .empty-title { color: #1e1b4b; font-size: 16px; font-weight: bold; }
+.empty-state p { color: var(--muted); margin: 4px 0; font-size: 14px; }
+.empty-state .empty-title { color: var(--text); font-size: 16px; font-weight: bold; }
 
-.detail { margin-top: 20px; border: 1px solid #e0e7ff; border-radius: 18px; padding: 18px; background: #f8faff; }
+.detail { margin-top: 20px; border: 1px solid var(--line); border-radius: 16px; padding: 18px; background: #081812; }
 .detail-head { display: flex; justify-content: space-between; align-items: center; }
-.detail-head h2 { font-size: 16px; margin: 0; color: #1e1b4b; }
-.close { border: none; background: #eef2ff; color: #4f46e5; cursor: pointer; font-size: 14px; width: 30px; height: 30px; border-radius: 50%; }
-.close:hover { background: #e0e7ff; }
+.detail-head h2 { font-size: 16px; margin: 0; color: var(--text); }
+.close { border: none; background: rgba(112, 224, 194, 0.10); color: var(--mint); cursor: pointer; font-size: 14px; width: 30px; height: 30px; border-radius: 50%; }
+.close:hover { background: rgba(112, 224, 194, 0.18); }
 .detail dl { margin: 12px 0 0; }
-.detail-row { display: flex; gap: 12px; padding: 7px 0; border-top: 1px solid #e8eaf0; }
-.detail-row dt { color: #64748b; font-size: 13px; min-width: 120px; }
-.detail-row dd { margin: 0; font-size: 13px; color: #1e293b; }
+.detail-row { display: flex; gap: 12px; padding: 7px 0; border-top: 1px solid rgba(112, 224, 194, 0.10); }
+.detail-row dt { color: var(--muted); font-size: 13px; min-width: 120px; }
+.detail-row dd { margin: 0; font-size: 13px; color: var(--text); }
 
 /* نمودار ماژول‌ها */
 .steps { display: flex; flex-direction: column; margin-top: 20px; }
 .step {
   display: flex; align-items: center; gap: 14px; text-align: right;
-  border: 1px solid #e8eaf0; border-radius: 18px; background: #fff;
+  border: 1px solid var(--line); border-radius: 16px; background: #081812;
   padding: 15px 17px; cursor: pointer; font-family: inherit; width: 100%;
-  box-shadow: 0 4px 14px rgba(30, 27, 75, 0.04);
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.step:hover { border-color: #a5b4fc; background: #fafbff; transform: translateY(-2px); box-shadow: 0 10px 22px rgba(79, 70, 229, 0.14); }
+.step:hover { border-color: rgba(112, 224, 194, 0.45); background: var(--card2); transform: translateY(-2px); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.4); }
 .step-num {
   width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; font-weight: bold;
+  background: var(--grad); color: var(--dark-text); font-weight: bold;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 5px 12px rgba(79, 70, 229, 0.35);
+  box-shadow: 0 0 16px rgba(112, 224, 194, 0.30);
 }
 .step-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.step-name { font-size: 15px; color: #1e1b4b; font-weight: bold; }
-.step-desc { font-size: 12px; color: #64748b; }
+.step-name { font-size: 15px; color: var(--text); font-weight: bold; }
+.step-desc { font-size: 12px; color: var(--muted); }
 .step-count {
-  font-size: 12px; font-weight: bold; color: #4338ca; background: #eef2ff;
-  padding: 5px 11px; border-radius: 99px; white-space: nowrap; border: 1px solid #e0e7ff;
+  font-size: 12px; font-weight: bold; color: var(--mint); background: rgba(112, 224, 194, 0.10);
+  padding: 5px 11px; border-radius: 99px; white-space: nowrap; border: 1px solid var(--line2);
 }
-.step-arrow { text-align: center; color: #a5b4fc; font-size: 16px; line-height: 1.5; }
+.step-arrow { text-align: center; color: var(--sage); font-size: 16px; line-height: 1.5; }
 
-/* مودال تایید درخواست تعمیراتی */
+/* مودال تایید — کارت تیره، دکمه تایید گرادیانی، دکمه رد با بوردر نازک */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 100;
-  background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(3px);
+  background: rgba(1, 5, 4, 0.72); backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center; padding: 16px;
 }
 .modal {
-  background: #fff; border-radius: 24px; width: 100%; max-width: 460px;
-  padding: 26px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+  background: linear-gradient(180deg, #0a1f16, #06130d);
+  border: 1px solid rgba(112, 224, 194, 0.30); border-radius: 16px; width: 100%; max-width: 460px;
+  padding: 26px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(4, 163, 111, 0.12);
   text-align: center;
 }
 .modal-icon {
   width: 60px; height: 60px; margin: 0 auto 14px; border-radius: 50%;
-  background: linear-gradient(135deg, #fef3c7, #fde68a); color: #b45309;
+  background: rgba(112, 224, 194, 0.12); color: var(--mint);
+  border: 1px solid var(--line2); box-shadow: 0 0 24px rgba(112, 224, 194, 0.25);
   display: flex; align-items: center; justify-content: center;
 }
 .modal-icon svg { width: 30px; height: 30px; }
-.modal h2 { font-size: 19px; color: #1e1b4b; margin: 0 0 6px; }
-.modal p.modal-sub { color: #64748b; font-size: 13.5px; margin: 0 0 18px; line-height: 1.8; }
+.modal h2 { font-size: 19px; color: var(--text); margin: 0 0 6px; }
+.modal p.modal-sub { color: var(--muted); font-size: 13.5px; margin: 0 0 18px; line-height: 1.8; }
 .modal-summary {
-  background: #f8faff; border: 1px solid #e0e7ff; border-radius: 16px;
+  background: rgba(1, 5, 4, 0.5); border: 1px solid var(--line); border-radius: 14px;
   padding: 6px 16px; margin-bottom: 20px; text-align: right;
 }
-.modal-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eef0f4; font-size: 14px; }
+.modal-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(112, 224, 194, 0.10); font-size: 14px; }
 .modal-row:last-child { border-bottom: none; }
-.modal-row dt { color: #64748b; min-width: 80px; }
-.modal-row dd { margin: 0; color: #1e293b; font-weight: bold; }
+.modal-row dt { color: var(--muted); min-width: 80px; }
+.modal-row dd { margin: 0; color: var(--text); font-weight: bold; }
 .modal-actions { display: flex; gap: 10px; }
 .btn-confirm {
-  flex: 1; padding: 13px; border: none; border-radius: 14px; cursor: pointer;
-  font-family: inherit; font-size: 15px; font-weight: bold; color: #fff;
-  background: linear-gradient(135deg, #10b981, #059669);
-  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.35);
+  flex: 1; padding: 13px; border: none; border-radius: 99px; cursor: pointer;
+  font-family: inherit; font-size: 15px; font-weight: bold; color: var(--dark-text);
+  background: var(--grad); box-shadow: 0 8px 20px rgba(4, 163, 111, 0.35);
   transition: transform 0.15s ease;
 }
 .btn-confirm:hover:not(:disabled) { transform: translateY(-1px); }
 .btn-reject {
-  flex: 1; padding: 13px; border: 1.5px solid #e2e8f0; border-radius: 14px; cursor: pointer;
-  font-family: inherit; font-size: 15px; color: #475569; background: #fff;
+  flex: 1; padding: 13px; border: 1px solid rgba(233, 244, 239, 0.35); border-radius: 99px; cursor: pointer;
+  font-family: inherit; font-size: 15px; color: var(--text); background: transparent;
   transition: background 0.15s ease;
 }
-.btn-reject:hover:not(:disabled) { background: #f8fafc; }
+.btn-reject:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
 .btn-confirm:disabled, .btn-reject:disabled { opacity: 0.55; cursor: default; }
+
+/* آیکن سه‌بعدی تعمیرات — چرخ‌دنده + آچار، گوشه پایین-چپ صفحه.
+   فقط CSS: سه لایه SVG با فاصله عمق (translateZ) داخل یک صحنه با perspective،
+   که روی هر سه محور X و Y و Z می‌چرخد؛ بدون هیچ کتابخانه‌ای. */
+.gear-3d {
+  position: fixed; left: 22px; bottom: 22px; z-index: 50;
+  width: 96px; height: 96px; pointer-events: none;
+  perspective: 700px;
+  animation: gear-float 5s ease-in-out infinite;
+}
+.gear-3d-halo {
+  position: absolute; inset: -20px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(4, 163, 111, 0.45), rgba(98, 159, 176, 0.16) 55%, transparent 70%);
+}
+.gear-3d-scene {
+  position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  animation: gear-spin-3d 16s ease-in-out infinite;
+}
+.gear-3d-layer { position: absolute; inset: 0; }
+.gear-3d-layer svg { width: 100%; height: 100%; display: block; }
+.gear-back { transform: translateZ(-16px); }
+.gear-mid { animation: gear-rotate 24s linear infinite; }
+.gear-front { transform: translateZ(16px); }
+@keyframes gear-spin-3d {
+  0%   { transform: rotateX(-18deg) rotateY(0deg)   rotateZ(-12deg); }
+  25%  { transform: rotateX(16deg)  rotateY(90deg)  rotateZ(10deg); }
+  50%  { transform: rotateX(-14deg) rotateY(180deg) rotateZ(-10deg); }
+  75%  { transform: rotateX(18deg)  rotateY(270deg) rotateZ(12deg); }
+  100% { transform: rotateX(-18deg) rotateY(360deg) rotateZ(-12deg); }
+}
+@keyframes gear-rotate {
+  from { transform: translateZ(0) rotateZ(0deg); }
+  to   { transform: translateZ(0) rotateZ(360deg); }
+}
+@keyframes gear-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gear-3d, .gear-3d-scene, .gear-mid { animation: none; }
+}
 
 @media (max-width: 720px) {
   .layout { flex-direction: column; }
   .sidebar {
     width: 100%; height: auto; position: static;
     flex-direction: row; padding: 8px; overflow-x: auto;
-    background: linear-gradient(90deg, #1e1b4b, #312e81 60%, #1e3a8a);
+    background: linear-gradient(90deg, #020a07, #04160f);
+    border-left: none; border-bottom: 1px solid var(--line);
   }
   .brand { margin-bottom: 0; flex-shrink: 0; }
   .sidebar nav { flex-direction: row; }
   .main { padding: 12px; }
-  .card { border-radius: 18px; padding: 16px; }
+  .card { border-radius: 16px; padding: 16px; }
   .modal-actions { flex-direction: column; }
+  .gear-3d { width: 64px; height: 64px; left: 12px; bottom: 12px; }
 }

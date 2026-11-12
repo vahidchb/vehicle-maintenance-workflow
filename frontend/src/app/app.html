@@ -209,4 +209,43 @@
       </div>
     </div>
   }
+
+  <!-- آیکن سه‌بعدی تعمیرات خودرویی — چرخ‌دنده + آچار، گوشه پایین-چپ صفحه.
+       سه لایه SVG با فاصله عمق؛ انیمیشن سه‌بعدی (X/Y/Z) فقط با CSS است. -->
+  <div class="gear-3d" aria-hidden="true">
+    <div class="gear-3d-halo"></div>
+    <div class="gear-3d-scene">
+      <!-- لایه عقب: چرخ‌دنده تیره (عمق سه‌بعدی) -->
+      <div class="gear-3d-layer gear-back">
+        <svg viewBox="0 0 100 100"><path fill="#0d3b2c" fill-rule="evenodd" d="M83.8 37.7 L85.1 41.9 L95.6 43.6 L95.6 56.4 L85.1 58.1 L83.8 62.3 L82.6 65.2 L80.5 69.1 L86.7 77.7 L77.7 86.7 L69.1 80.5 L65.2 82.6 L62.3 83.8 L58.1 85.1 L56.4 95.6 L43.6 95.6 L41.9 85.1 L37.7 83.8 L34.8 82.6 L30.9 80.5 L22.3 86.7 L13.3 77.7 L19.5 69.1 L17.4 65.2 L16.2 62.3 L14.9 58.1 L4.4 56.4 L4.4 43.6 L14.9 41.9 L16.2 37.7 L17.4 34.8 L19.5 30.9 L13.3 22.3 L22.3 13.3 L30.9 19.5 L34.8 17.4 L37.7 16.2 L41.9 14.9 L43.6 4.4 L56.4 4.4 L58.1 14.9 L62.3 16.2 L65.2 17.4 L69.1 19.5 L77.7 13.3 L86.7 22.3 L80.5 30.9 L82.6 34.8 Z M35 50 A15 15 0 1 0 65 50 A15 15 0 1 0 35 50 Z"/></svg>
+      </div>
+      <!-- لایه میانی: چرخ‌دنده اصلی با گرادیان نعنایی -->
+      <div class="gear-3d-layer gear-mid">
+        <svg viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="gearGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#70e0c2"/>
+              <stop offset=".55" stop-color="#04a36f"/>
+              <stop offset="1" stop-color="#285748"/>
+            </linearGradient>
+          </defs>
+          <path fill="url(#gearGrad)" fill-rule="evenodd" d="M83.8 37.7 L85.1 41.9 L95.6 43.6 L95.6 56.4 L85.1 58.1 L83.8 62.3 L82.6 65.2 L80.5 69.1 L86.7 77.7 L77.7 86.7 L69.1 80.5 L65.2 82.6 L62.3 83.8 L58.1 85.1 L56.4 95.6 L43.6 95.6 L41.9 85.1 L37.7 83.8 L34.8 82.6 L30.9 80.5 L22.3 86.7 L13.3 77.7 L19.5 69.1 L17.4 65.2 L16.2 62.3 L14.9 58.1 L4.4 56.4 L4.4 43.6 L14.9 41.9 L16.2 37.7 L17.4 34.8 L19.5 30.9 L13.3 22.3 L22.3 13.3 L30.9 19.5 L34.8 17.4 L37.7 16.2 L41.9 14.9 L43.6 4.4 L56.4 4.4 L58.1 14.9 L62.3 16.2 L65.2 17.4 L69.1 19.5 L77.7 13.3 L86.7 22.3 L80.5 30.9 L82.6 34.8 Z M35 50 A15 15 0 1 0 65 50 A15 15 0 1 0 35 50 Z"/>
+        </svg>
+      </div>
+      <!-- لایه جلو: آچار روشن -->
+      <div class="gear-3d-layer gear-front">
+        <svg viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="wrenchGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#c9f7e8"/>
+              <stop offset="1" stop-color="#70e0c2"/>
+            </linearGradient>
+          </defs>
+          <g transform="translate(26 26) scale(2)">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" fill="none" stroke="url(#wrenchGrad)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
 </div>
