@@ -316,11 +316,15 @@ export class App {
   }
 
   // عکس خودرو بر اساس نام ثبت‌شده؛ فایل‌ها در frontend/public هستند
-  // سمند → samand.jpg ، پراید → pride.jpg ، پژو پارس/پرشیا و هر نام دیگر → pars.jpg
+  // سمند → samand.jpg ، پراید → pride.jpg ، تارا → tara.jpg ، دنا → dena-plus.jpg
+  // پژو پارس/پرشیا و هر نام دیگر → pars.jpg (پیش‌فرض)
+  // تطابق زیررشته است، پس «سمند LX» و «تارا V4» هم درست شناخته می‌شوند
   carImageFor(name: string): string {
     const n = (name ?? '').trim().toLowerCase();
     if (n.includes('سمند') || n.includes('samand')) return '/samand.jpg';
     if (n.includes('پراید') || n.includes('pride')) return '/pride.jpg';
+    if (n.includes('تارا') || n.includes('tara')) return '/tara.jpg';
+    if (n.includes('دنا') || n.includes('dena')) return '/dena-plus.jpg';
     return '/pars.jpg';
   }
 

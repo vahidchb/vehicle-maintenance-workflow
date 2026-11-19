@@ -104,4 +104,7 @@ def seed_demo_data() -> bool:
         workflow.register_work_order_step(req2, "شهید همت", "لاستیک بارز"),
         "حکم کار پژو",
     )
+
+    # --- خودروی ۳: پراید با پلاک 789 — فقط تجهیز، بدون هیچ سابقه‌ای ---
+    _check(workflow.register_equipment_step("789", "پراید"), "ثبت تجهیز پراید")
     return True
