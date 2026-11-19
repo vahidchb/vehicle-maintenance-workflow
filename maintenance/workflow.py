@@ -158,6 +158,20 @@ def register_repair_request_step(evaluation_id: str, fault_id: str = "",
             fault = faults[-1]
             fault_id = fault["tracking"]
 
+    # اگر برای این خرابی تاییدیه در انتظار هست، همان را برگردان (تکراری نساز)
+    if fault_id:
+        existing = next(
+            (p for p in store.list_pending_confirmations()
+             if p["fault_id"] == fault_id.strip().upper()),
+            None,
+        )
+        if existing is not None:
+            return {"ok": True, "needs_confirmation": True,
+                    "confirmation_id": existing["confirmation_id"],
+                    "summary": dict(existing),
+                    "message": "تاییدیه درخواست تعمیراتی برای این خرابی قبلاً ساخته شده است؛ "
+                               "پنجره تایید برای کاربر باز می‌شود."}
+
     vehicle = store.get_vehicle(evaluation["plate"])
     equipment_name = vehicle["name"] if vehicle else ""
     # گزارش بازدیدی که ارزیابی روی آن ثبت شده؛ در پنجره تایید نشان داده می‌شود.

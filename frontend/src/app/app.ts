@@ -315,6 +315,26 @@ export class App {
     return this.garageRecords()['equipment'] ?? [];
   }
 
+  // عکس خودرو بر اساس نام ثبت‌شده؛ فایل‌ها در frontend/public هستند
+  // سمند → samand.jpg ، پراید → pride.jpg ، پژو پارس/پرشیا و هر نام دیگر → pars.jpg
+  carImageFor(name: string): string {
+    const n = (name ?? '').trim().toLowerCase();
+    if (n.includes('سمند') || n.includes('samand')) return '/samand.jpg';
+    if (n.includes('پراید') || n.includes('pride')) return '/pride.jpg';
+    return '/pars.jpg';
+  }
+
+  // اگر فایل عکس نبود، پارس را نشان بده؛ اگر آن هم نبود، عکس را مخفی کن
+  // تا هیچ‌وقت تصویر خراب دیده نشود
+  onCarImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    if (!img.src.endsWith('/pars.jpg')) {
+      img.src = '/pars.jpg';
+    } else {
+      img.style.display = 'none';
+    }
+  }
+
   // رکوردهای یک ماژول برای یک پلاک مشخص
   private recordsForPlate(moduleKey: string, plate: string): Record<string, unknown>[] {
     return (this.garageRecords()[moduleKey] ?? []).filter((r) => r['plate'] === plate);
@@ -372,12 +392,9 @@ export class App {
     this.askChat('یک خودروی [نام خودرو] با پلاک [پلاک] ثبت کن');
   }
 
-  registerInspectionFor(plate: string) {
-    this.askChat(`برای خودروی با پلاک ${plate} بازدید ثبت کن`);
-  }
-
-  registerEvaluationFor(plate: string) {
-    this.askChat(`برای خودروی با پلاک ${plate} ارزیابی ثبت کن`);
+  // بازدید و ارزیابی یک فرایند است؛ یک دکمه برای هر دو، با پیام آماده در چت‌بات
+  registerInspectionAndEvaluationFor(plate: string) {
+    this.askChat(`برای خودروی با پلاک ${plate} بازدید و ارزیابی ثبت کن`);
   }
 
   registerFaultFor(plate: string) {

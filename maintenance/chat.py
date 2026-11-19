@@ -20,7 +20,7 @@ SYSTEM_PROMPT = """تو چت‌بات نگهداری و تعمیرات تجهی�
 2. ثبت بازدید بر اساس زیرمجموعه (موتور، چرخ و...)
 3. ثبت ارزیابی (می‌تواند بدون خرابی باشد)
 4. ثبت خرابی برای یک ارزیابی
-5. ثبت درخواست تعمیراتی که خرابی در آن هست — قبل از ثبت، پنجره تایید برای کاربر باز می‌شود
+5. ثبت درخواست تعمیراتی که خرابی در آن هست — بعد از ثبت خرابی، پنجره تایید «خودکار» باز می‌شود
 6. تایید درخواست
 7. ثبت حکم کار (تعمیرگاه + قطعات مورد نیاز) — فقط بعد از تایید درخواست
 
@@ -28,12 +28,18 @@ SYSTEM_PROMPT = """تو چت‌بات نگهداری و تعمیرات تجهی�
 مثلا اگر گفت «فلان خودرو فلان خرابی دارد»، اول خودرو را جستجو کن،
 بعد ارزیابی ثبت کن، بعد خرابی را برایش ثبت کن.
 
+بازدید و ارزیابی یک فرایند است: وقتی کاربر گفت «بازدید و ارزیابی»،
+اول بازدید را ثبت کن و بعد ارزیابی را روی همان بازدید ثبت کن؛
+زیرمجموعه را از حرف کاربر بگیر (مثلا موتور یا چرخ).
+
 ثبت خرابی: شرح کوتاه کاربر کافی است؛ همان را ثبت کن.
 هرگز علت خرابی، جزئیات یا دلیلش را نپرس. زیرمجموعه اختیاری است؛
 اگر کاربر کلمه‌ای مثل موتور یا چرخ گفت همان را بگذار، وگرنه خالی بگذار.
 
-درخواست تعمیراتی: وقتی آماده شد، به کاربر بگو پنجره تایید باز می‌شود
-تا اول گزارش بازدید و بعد تجهیز و خرابی را ببیند و تایید یا رد کند؛ شماره رهگیری را فقط بعد از تایید می‌گیرد.
+درخواست تعمیراتی: بعد از ثبت خرابی، سیستم «خودکار» پنجره تایید را باز می‌کند؛
+تو «این درخواست ثبت شود؟ (بله/خیر)» را نپرس و خودت ابزار register_repair_request را صدا نزن.
+فقط به کاربر بگو پنجره تایید باز شده تا اول گزارش بازدید و بعد تجهیز و خرابی را ببیند
+و آنجا تایید یا رد کند؛ شماره رهگیری را فقط بعد از تایید می‌گیرد.
 
 در هر مرحله شماره رهگیری را به کاربر بده.
 اگر کاربر لیست چیزی را خواست (مثلا لیست ارزیابی‌ها)، بگو گرید آن را نشان می‌دهد و خلاصه‌اش را بگو.
@@ -106,6 +112,55 @@ def _new_confirmation(seen_ids: set[str]) -> dict | None:
     return None
 
 
+def _maybe_create_confirmation(fault: dict) -> dict | None:
+    """برای یک خرابی، تاییدیه درخواست تعمیراتی بساز؛ اگر قبلاً درخواست یا
+    تاییدیه‌ای برای این خرابی (یا این خودرو) هست، چیزی نساز و None برگردان."""
+    fault_id = fault["tracking"]
+    # اگر برای این خرابی قبلاً درخواست ثبت شده، تاییدیه جدید نساز
+    if any(r["fault_id"] == fault_id for r in store.list_requests()):
+        return None
+    # اگر برای این خرابی یا این خودرو تاییدیه در انتظار هست، تکراری نساز
+    if any(p["fault_id"] == fault_id or p["plate"] == fault["plate"]
+           for p in store.list_pending_confirmations()):
+        return None
+    result = workflow.register_repair_request_step(fault["evaluation_id"], fault_id)
+    if not result.get("ok"):
+        return None
+    return result.get("summary")
+
+
+def _auto_create_confirmations(known_faults: set[str], known_inspections: set[str]) -> dict | None:
+    """بعد از ثبت خرابی یا بازدید جدید، تاییدیه درخواست تعمیراتی را خودکار بساز
+    تا مودال تایید بدون سوال اضافه باز شود.
+
+    - خرابی جدید → تاییدیه برای همان خرابی.
+    - بازدید جدید → اگر خودرو خرابی بدون درخواست دارد، تاییدیه برای آخرین آن خرابی.
+    برمی‌گرداند: تاییدیه ساخته‌شده، یا None اگر چیزی ساخته نشد.
+    """
+    # 1) خرابی‌های جدید این دور
+    for fault in store.list_faults():
+        if fault["tracking"] not in known_faults:
+            created = _maybe_create_confirmation(fault)
+            if created is not None:
+                return created
+    # 2) بازدیدهای جدید این دور — فقط اگر خرابی بدون درخواست هست
+    for inspection in store.list_inspections():
+        if inspection["tracking"] in known_inspections:
+            continue
+        plate = inspection["plate"]
+        open_faults = [
+            f for f in store.list_faults()
+            if f["plate"] == plate
+            and not any(r["fault_id"] == f["tracking"] for r in store.list_requests())
+            and not any(p["fault_id"] == f["tracking"] for p in store.list_pending_confirmations())
+        ]
+        if open_faults:
+            created = _maybe_create_confirmation(open_faults[-1])
+            if created is not None:
+                return created
+    return None
+
+
 def chat_one_turn(messages: list[dict]) -> dict:
     """یک پیام کاربر را جواب بده؛ ابزار را هم در همین تابع مدیریت کن.
 
@@ -127,6 +182,9 @@ def chat_one_turn(messages: list[dict]) -> dict:
                     "pending_confirmation": _new_confirmation(seen_ids)}
 
         # اگر ابزار خواست، اجراش کن و نتیجه را به مکالمه اضافه کن
+        # (رکوردهای قبل از اجرا را نگه دار تا خرابی/بازدید «جدید» این دور را بشناسیم)
+        known_faults = {f["tracking"] for f in store.list_faults()}
+        known_inspections = {i["tracking"] for i in store.list_inspections()}
         for call in msg.tool_calls:
             print(f"[tool] {call.function.name} را صدا می‌زنم...")
             result = run_tool(call.function.name, call.function.arguments)
@@ -137,6 +195,16 @@ def chat_one_turn(messages: list[dict]) -> dict:
                     "content": result,
                 }
             )
+
+        # تایید خودکار: بعد از ثبت خرابی یا بازدید جدید، اگر خرابی بدون
+        # درخواست هست، تاییدیه را خودکار بساز تا مودال تایید باز شود
+        created = _auto_create_confirmations(known_faults, known_inspections)
+        if created is not None:
+            messages.append({
+                "role": "system",
+                "content": "[تاییدیه خودکار] پنجره تایید درخواست تعمیراتی برای خرابی "
+                           f"{created['fault_id']} باز شد؛ کاربر آنجا تایید یا رد می‌کند.",
+            })
 
     return {"reply": "متاسفم، نتوانستم جواب کامل بدهم.",
             "pending_confirmation": _new_confirmation(seen_ids)}

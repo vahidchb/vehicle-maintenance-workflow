@@ -127,8 +127,8 @@
             <p>فعلا در حافظه؛ با خاموش شدن بک‌اند پاک می‌شوند. دیتابیس بعدا اضافه می‌شود.</p>
           </details>
           <details>
-            <summary>چرا تصویر خودرو برای همه یکی است؟</summary>
-            <p>فعلا یک تصویر ثابت نمایش داده می‌شود؛ مدل سه‌بعدی واقعی بعدا می‌آید.</p>
+            <summary>تصویر هر خودرو چطور انتخاب می‌شود؟</summary>
+            <p>از روی نام ثبت‌شده: سمند، پراید و پارس هر کدام عکس خودشان را دارند؛ اگر نام دیگری ثبت کنی، تصویر پارس نشان داده می‌شود. فایل‌های عکس در پوشه frontend/public هستند.</p>
           </details>
         </div>
       </section>
@@ -161,6 +161,7 @@
         <div class="vehicle-grid">
           @for (v of vehicles(); track v['tracking']) {
             <button class="vehicle-card" (click)="openVehicle(v)">
+              <img class="vehicle-thumb" [src]="carImageFor(v['name'] + '')" (error)="onCarImageError($event)" [alt]="v['name']" />
               <span class="vehicle-plate">{{ v['plate'] }}</span>
               <span class="vehicle-name">{{ v['name'] }}@if (v['kind']) { · {{ v['kind'] }} }</span>
               <span class="vehicle-meta">
@@ -372,6 +373,7 @@
           <button class="close" (click)="closeVehicle()">✕</button>
         </div>
         <p class="modal-sub">شماره رهگیری {{ selectedVehicle()!['tracking'] }} · مرحله فعلی: {{ stageForPlate(selectedVehicle()!['plate'] + '').name }}</p>
+        <img class="vehicle-modal-img" [src]="carImageFor(selectedVehicle()!['name'] + '')" (error)="onCarImageError($event)" [alt]="selectedVehicle()!['name']" />
         @for (group of vehicleGroups(); track group.key) {
           <div class="record-group">
             <h3>{{ group.label }} ({{ group.items.length }})</h3>
@@ -388,8 +390,7 @@
           </div>
         }
         <div class="modal-actions">
-          <button class="btn-confirm" (click)="registerInspectionFor(selectedVehicle()!['plate'] + '')">ثبت بازدید</button>
-          <button class="btn-confirm" (click)="registerEvaluationFor(selectedVehicle()!['plate'] + '')">ثبت ارزیابی</button>
+          <button class="btn-confirm" (click)="registerInspectionAndEvaluationFor(selectedVehicle()!['plate'] + '')">ثبت بازدید و ارزیابی</button>
           <button class="btn-confirm" (click)="registerFaultFor(selectedVehicle()!['plate'] + '')">ثبت خرابی</button>
         </div>
         <p class="hint">ثبت‌ها با چت انجام می‌شود؛ این دکمه‌ها تو را به چت‌بات می‌برند با پیام آماده.</p>
