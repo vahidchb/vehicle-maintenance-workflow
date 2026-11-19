@@ -102,6 +102,20 @@ const VEHICLE_GROUPS: { key: string; label: string; line: (r: Record<string, unk
   { key: 'work_orders', label: 'حکم کارها', line: (r) => `${r['shop'] ?? ''} — قطعات: ${r['parts'] ?? ''}` },
 ];
 
+// --- گردونه سه‌بعدی صفحه خانه (Turntable) ---
+// ۷ زاویه از یک دنا پلاس قرمز، با یک بک‌گراند استودیویی؛ ترتیب = چرخش جلو به عقب.
+// برای عوض کردن خودرو بعدا کافی است فایل‌های پوشه public/turntable/ را عوض کنی
+// و همین لیست را به‌روز کنی — بقیه کد (چرخش، نقطه‌ها، درگ) دست نمی‌خورد.
+const TURNTABLE_IMAGES: string[] = [
+  '/turntable/dena-0007.jpg', // جلو
+  '/turntable/dena-0001.jpg', // جلو سه‌ربع
+  '/turntable/dena-0002.jpg', // کنار (جلو)
+  '/turntable/dena-0003.jpg', // کنار (عقب)
+  '/turntable/dena-0004.jpg', // عقب سه‌ربع
+  '/turntable/dena-0005.jpg', // عقب
+  '/turntable/dena-0006.jpg', // عقب سه‌ربع (سمت دیگر)
+];
+
 @Component({
   selector: 'app-root',
   imports: [FormsModule],
@@ -114,9 +128,25 @@ export class App {
   // --- نما: خانه، گاراژ، چت، سرچ مقاله، گرید، یا نمودار ماژول‌ها ---
   view = signal<View>('home');
 
+  // --- گردونه سه‌بعدی صفحه خانه ---
+  // لیست عکس‌ها (برای template؛ ترتیب چرخش در TURNTABLE_IMAGES است)
+  turntableImages = TURNTABLE_IMAGES;
+  // زاویه فعلی
+  turntableIndex = signal(0);
+  // مکث چرخش خودکار وقتی موس روی صحنه است
+  turntablePaused = signal(false);
+  // جهت چرخش خودکار: ۱ جلو به عقب، ۱- برگشت — رفت و برگشت (ping-pong)
+  // تا چرخه بدون پرش ناگهانی به جلو برگردد
+  private turntableDirection: 1 | -1 = 1;
+  // نقطه شروع درگ، برای چرخاندن دستی با موس/لمس (null یعنی درگ فعال نیست)
+  private dragStartX: number | null = null;
+
   constructor() {
     // آمار صفحه خانه (تعداد رکورد هر ماژول) را از اول بارگذاری کن
     this.refreshModules();
+    // چرخش خودکار گردونه: هر ۳ ثانیه یک زاویه — این کامپوننت روت است و
+    // تا پایان عمر اپ زنده می‌ماند، پس تایمر نیازی به پاک شدن ندارد
+    setInterval(() => this.autoTurntable(), 3000);
   }
 
   // --- چت ---
@@ -193,6 +223,76 @@ export class App {
         // اگر API خاموش باشد، آمار صفر می‌ماند؛ خطا را در گاراژ/گرید نشان می‌دهیم
       },
     });
+  }
+
+  // --- گردونه سه‌بعدی صفحه خانه ---
+
+  // یک قدم چرخش خودکار؛ وقتی موس روی صحنه است، درگ فعال است، یا نمای خانه
+  // باز نیست، هیچ کاری نمی‌کند
+  private autoTurntable() {
+    if (this.turntablePaused() || this.dragStartX !== null || this.view() !== 'home') return;
+    this.stepTurntable(this.turntableDirection);
+  }
+
+  // یک قدم به جلو یا عقب در لیست زاویه‌ها؛ در دو سر لیست جهت برمی‌گردد
+  private stepTurntable(dir: 1 | -1) {
+    const last = this.turntableImages.length - 1;
+    let next = this.turntableIndex() + dir;
+    if (next > last) { next = last - 1; this.turntableDirection = -1; }
+    if (next < 0) { next = 1; this.turntableDirection = 1; }
+    this.turntableIndex.set(next);
+  }
+
+  // فلش بعدی — دستی دور می‌زند تا کاربر هر وقت خواست بچرخاند
+  turntableNext() {
+    this.turntableDirection = 1;
+    this.turntableIndex.set((this.turntableIndex() + 1) % this.turntableImages.length);
+  }
+
+  // فلش قبلی
+  turntablePrev() {
+    this.turntableDirection = -1;
+    const n = this.turntableImages.length;
+    this.turntableIndex.set((this.turntableIndex() - 1 + n) % n);
+  }
+
+  // پرش به یک زاویه با کلیک روی نقطه
+  goToTurntableAngle(index: number) {
+    this.turntableIndex.set(index);
+  }
+
+  // مکث چرخش خودکار وقتی موس روی صحنه است
+  pauseTurntable() {
+    this.turntablePaused.set(true);
+  }
+
+  resumeTurntable() {
+    this.turntablePaused.set(false);
+  }
+
+  // شیب سه‌بعدی ملایم قاب عکس، بر اساس زاویه فعلی — تاب خوردن آرام، نه چرخش کامل
+  turntableTilt(): string {
+    const middle = (this.turntableImages.length - 1) / 2;
+    const tiltY = (this.turntableIndex() - middle) * 1.6;
+    return `rotateX(2deg) rotateY(${tiltY}deg)`;
+  }
+
+  // --- درگ دستی: کشیدن چپ/راست روی صحنه، زاویه را عوض می‌کند ---
+  onTurntableDragStart(event: PointerEvent) {
+    this.dragStartX = event.clientX;
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  }
+
+  onTurntableDragMove(event: PointerEvent) {
+    if (this.dragStartX === null) return;
+    const dx = event.clientX - this.dragStartX;
+    if (Math.abs(dx) < 48) return;
+    if (dx < 0) this.turntableNext(); else this.turntablePrev();
+    this.dragStartX = event.clientX;
+  }
+
+  onTurntableDragEnd() {
+    this.dragStartX = null;
   }
 
   send() {

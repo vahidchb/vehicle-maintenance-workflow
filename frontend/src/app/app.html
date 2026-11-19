@@ -28,10 +28,8 @@
   <main class="main">
     <!-- نمای خانه — لندینگ به سبک 3DTUNNERS (فعلا بدون لاگین) -->
     @if (view() === 'home') {
-      <!-- هیرو: تصویر تارا + عنوان بزرگ + دو دکمه -->
+      <!-- هیرو: متن + گردونه سه‌بعدی خودرو (۷ زاویه دنا پلاس، چرخش خودکار) -->
       <section class="hero">
-        <img class="hero-img" src="/tara.jpg" alt="خودروی تارا" />
-        <div class="hero-overlay"></div>
         <div class="hero-content">
           <p class="hero-kicker">نگهداری و تعمیرات تجهیزات خودرویی</p>
           <h1>گاراژ هوشمند، با <span class="accent">Workflow</span> صریح</h1>
@@ -39,6 +37,28 @@
           <div class="hero-actions">
             <button class="btn-primary" (click)="openGarage()">ورود به گاراژ</button>
             <button class="btn-ghost" (click)="goChat()">گفتگو با چت‌بات</button>
+          </div>
+        </div>
+        <!-- گردونه: ۷ عکس روی هم با کراس‌فید؛ هاور مکث می‌کند، درگ می‌چرخاند -->
+        <div class="turntable"
+             (mouseenter)="pauseTurntable()" (mouseleave)="resumeTurntable()"
+             (pointerdown)="onTurntableDragStart($event)"
+             (pointermove)="onTurntableDragMove($event)"
+             (pointerup)="onTurntableDragEnd()" (pointercancel)="onTurntableDragEnd()">
+          <div class="turntable-frame" [style.transform]="turntableTilt()">
+            @for (img of turntableImages; track img) {
+              <img class="turntable-img" [class.active]="turntableIndex() === $index"
+                   [src]="img" [alt]="'دنا پلاس — زاویه ' + ($index + 1)" draggable="false" />
+            }
+          </div>
+          <div class="turntable-glow"></div>
+          <button class="turntable-arrow turntable-arrow-prev" (click)="turntablePrev()" aria-label="زاویه قبلی">›</button>
+          <button class="turntable-arrow turntable-arrow-next" (click)="turntableNext()" aria-label="زاویه بعدی">‹</button>
+          <div class="turntable-dots">
+            @for (img of turntableImages; track img) {
+              <button class="turntable-dot" [class.active]="turntableIndex() === $index"
+                      (click)="goToTurntableAngle($index)" [attr.aria-label]="'زاویه ' + ($index + 1)"></button>
+            }
           </div>
         </div>
       </section>
