@@ -86,6 +86,7 @@ def reset() -> None:
     with db.lock:
         with db.connect() as conn:
             for table in (
+                "session_memory",
                 "pending_confirmations",
                 "work_orders",
                 "repair_requests",

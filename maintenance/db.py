@@ -51,6 +51,12 @@ DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "maintenance.db"
 # extra_data: دیتای اضافی‌ای که کاربر موقع ثبت گفته ولی فیلد مشخصی
 # ندارد (مثلا «سطح روغن کم بود»)، به‌صورت JSON اینجا می‌رود؛
 # ستون‌های ثابت برای گزارش سریع و ایندکس‌دار می‌مانند.
+#
+# session_memory: حافظه هر جلسه چت — دو لایه (session_memory.py):
+# summary = خلاصه غلتان همه حرف‌های قبل از چند پیام آخر،
+# recent_messages = چند پیام آخر، عیناً به‌صورت JSON.
+# چون CREATE TABLE IF NOT EXISTS است، روی دیتابیس قدیمی هم با اولین
+# اتصال ساخته می‌شود و migrate لازم ندارد.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS equipment (
     tracking TEXT PRIMARY KEY,
@@ -109,6 +115,12 @@ CREATE TABLE IF NOT EXISTS pending_confirmations (
     description TEXT NOT NULL DEFAULT '',
     inspection_json TEXT,
     extra_data TEXT NOT NULL DEFAULT '{}'
+);
+CREATE TABLE IF NOT EXISTS session_memory (
+    session_id TEXT PRIMARY KEY,
+    summary TEXT NOT NULL DEFAULT '',
+    recent_messages TEXT NOT NULL DEFAULT '[]',
+    updated_at TEXT NOT NULL DEFAULT ''
 );
 """
 

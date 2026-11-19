@@ -13,9 +13,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from maintenance import config, store
+from maintenance import config, session_memory, store
 from maintenance.chat import SYSTEM_PROMPT, chat_one_turn
-from maintenance.memory import count_messages_tokens, needs_compaction, compact_messages
+from maintenance.memory import count_messages_tokens
 from maintenance.seed import seed_demo_data
 from maintenance.workflow import WORKFLOW_STAGES, confirm_repair_request_step
 
@@ -39,8 +39,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# حافظه ساده: هر session_id یک مکالمه دارد.
-sessions: dict[str, list[dict]] = {}
+# حافظه چت در دیتابیس است (جدول session_memory)، نه در حافظه برنامه؛
+# پس API بی‌حافظه (stateless) است و ری‌استارت بک‌اند تاریخچه را پاک نمی‌کند.
+# هر جلسه با session_id شناخته می‌شود (هنوز لاگین نداریم؛ user_id بعداً می‌آید).
 
 # ماژول‌ها: کلید، نام فارسی، و تابع لیست رکوردها
 MODULES = [
@@ -98,26 +99,24 @@ def health():
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
-    """یک پیام بگیر، با همان منطق chat.py جواب بده."""
+    """یک پیام بگیر، با همان منطق chat.py جواب بده.
+
+    جریان حافظه (stateless): حافظه سشن را از دیتابیس بخوان،
+    کانتکس را بساز (خلاصه غلتان + چند پیام آخر + پیام جدید)،
+    جواب بده و حافظه جدید را ذخیره کن.
+    """
     if not config.LLM_API_KEY or not config.LLM_BASE_URL:
         raise HTTPException(
             status_code=400,
             detail="اول TOKEN_HARBOR_API_KEY و LLM_BASE_URL را در فایل .env بگذار.",
         )
     session_id = req.session_id or str(uuid.uuid4())
-    messages = sessions.get(session_id)
-    if messages is None:
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-        sessions[session_id] = messages
-
-    messages.append({"role": "user", "content": req.message})
-
-    # مدیریت توکن + compaction، دقیقاً مثل نسخه ترمینالی
-    if needs_compaction(messages):
-        messages[:] = compact_messages(messages)
+    memory = session_memory.load_session(session_id)
+    messages, included = session_memory.build_context(SYSTEM_PROMPT, memory, req.message)
 
     before = len(messages)
     result = chat_one_turn(messages)
+    session_memory.save_turn(session_id, memory, messages, included)
     used_tool = any(m.get("role") == "tool" for m in messages[before:])
 
     return ChatResponse(
@@ -139,11 +138,12 @@ def confirm_repair_request(req: ConfirmRequest):
     یک بار تایید کافی است؛ نتیجه به مکالمه اضافه می‌شود تا مدل دوباره نپرسد.
     """
     outcome = confirm_repair_request_step(req.confirmation_id, req.confirmed)
-    # نتیجه تایید را به جلسه چت اضافه کن تا مدل در دور بعدی بداند چه شد
-    # (همان کاری که نسخه ترمینالی می‌کند)
-    if req.session_id and req.session_id in sessions:
-        sessions[req.session_id].append(
-            {"role": "system", "content": f"[نتیجه تایید درخواست تعمیراتی] {outcome['message']}"}
+    # نتیجه تایید را به حافظه جلسه چت اضافه کن تا مدل در دور بعدی بداند چه شد
+    # (حافظه در دیتابیس است؛ اگر سشن نبود ساخته می‌شود)
+    if req.session_id:
+        session_memory.append_system_note(
+            req.session_id,
+            f"[نتیجه تایید درخواست تعمیراتی] {outcome['message']}",
         )
     return ConfirmResponse(
         ok=outcome["ok"],

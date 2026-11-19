@@ -19,6 +19,12 @@ interface VehicleRecordGroup {
 
 type View = 'home' | 'garage' | 'chat' | 'articles' | 'grid' | 'modules';
 
+// کلیدهای localStorage برای شماره جلسه چت — شماره جلسه در مرورگر می‌ماند
+// تا بعد از ریلود صفحه، همان جلسه (و حافظه‌اش در دیتابیس) ادامه پیدا کند.
+// چت اصلی و سرچ مقاله هر کدام جلسه جدای خودشان را دارند.
+const CHAT_SESSION_KEY = 'vm-chat-session-id';
+const ARTICLE_SESSION_KEY = 'vm-article-session-id';
+
 // ستون‌های هر گرید: کلید فیلد + برچسب فارسی
 const COLUMNS: Record<string, { key: string; label: string }[]> = {
   equipment: [
@@ -152,6 +158,9 @@ export class App {
   private dragStartX: number | null = null;
 
   constructor() {
+    // جلسه‌های چت را از ریلود قبلی برگردان تا حافظه‌شان (در دیتابیس) ادامه پیدا کند
+    this.sessionId = localStorage.getItem(CHAT_SESSION_KEY);
+    this.articleSessionId = localStorage.getItem(ARTICLE_SESSION_KEY);
     // آمار صفحه خانه (تعداد رکورد هر ماژول) را از اول بارگذاری کن
     this.refreshModules();
     // چرخش خودکار گردونه: هر ۳ ثانیه یک زاویه — این کامپوننت روت است و
@@ -316,6 +325,7 @@ export class App {
     this.api.send(text, this.sessionId).subscribe({
       next: (res) => {
         this.sessionId = res.session_id;
+        localStorage.setItem(CHAT_SESSION_KEY, res.session_id);
         this.tokens.set(res.tokens);
         this.maxTokens.set(res.max_tokens);
         this.messages.update((list) => [
@@ -351,6 +361,7 @@ export class App {
     this.api.send(text, this.articleSessionId).subscribe({
       next: (res) => {
         this.articleSessionId = res.session_id;
+        localStorage.setItem(ARTICLE_SESSION_KEY, res.session_id);
         this.articleTokens.set(res.tokens);
         this.articleMaxTokens.set(res.max_tokens);
         this.articleMessages.update((list) => [

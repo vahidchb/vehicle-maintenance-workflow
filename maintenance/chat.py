@@ -2,15 +2,16 @@
 اگر گیج شدی، اول docs/LEARN_FA.md را بخوان.
 
 جریان هر پیام کاربر:
-1. توکن‌ها را بشمار، اگر زیاد بود compaction کن.
+1. حافظه سشن را از دیتابیس بخوان و کانتکس را بساز
+   (خلاصه غلتان + چند پیام آخر + پیام جدید).
 2. پیام را به مدل بده؛ مدل از حرف کاربر می‌فهمد در کدام مرحله
    workflow هستیم و ابزار مناسب را صدا می‌زند.
 3. نتیجه ابزار (با شماره رهگیری) را برگردان به مدل.
-4. جواب نهایی را نشان بده.
+4. جواب نهایی را نشان بده و حافظه جدید را ذخیره کن.
 """
-from . import config, store, workflow
+from . import config, session_memory, store, workflow
 from .llm import ask
-from .memory import count_messages_tokens, needs_compaction, compact_messages
+from .memory import count_messages_tokens
 from .tools import TOOLS, run_tool
 
 SYSTEM_PROMPT = """تو چت‌بات نگهداری و تعمیرات تجهیزات خودرویی هستی. کوتاه، واضح و به فارسی جواب بده.
@@ -69,7 +70,11 @@ work_orders(tracking, request_id, plate, shop, parts, status)
 
 
 def run_chat() -> None:
-    """چت ترمینالی را اجرا کن؛ با exit یا quit خارج شو."""
+    """چت ترمینالی را اجرا کن؛ با exit یا quit خارج شو.
+
+    تاریخچه ترمینال هم در دیتابیس می‌ماند (سشن ثابت 'cli')،
+    پس با بستن و باز کردن دوباره برنامه، بات حرف‌های قبلی را یادش است.
+    """
     missing = config.check_config()
     for msg in missing:
         print("⚠️", msg)
@@ -77,7 +82,6 @@ def run_chat() -> None:
         print("اول فایل .env را کامل کن (راهنما در README است).")
         return
 
-    messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
     print("چت‌بات نگهداری و تعمیرات آماده است. برای خروج بنویس: exit")
     print("-" * 40)
 
@@ -89,12 +93,11 @@ def run_chat() -> None:
         if not user_text:
             continue
 
-        messages.append({"role": "user", "content": user_text})
-
-        # 1) مدیریت توکن + compaction
-        if needs_compaction(messages):
-            print(f"[compaction] توکن‌ها زیاد شد ({count_messages_tokens(messages)})، خلاصه می‌کنم...")
-            messages = compact_messages(messages)
+        # 1) حافظه سشن را بخوان و کانتکس را بساز
+        memory = session_memory.load_session(session_memory.CLI_SESSION_ID)
+        messages, included = session_memory.build_context(
+            SYSTEM_PROMPT, memory, user_text
+        )
 
         # 2) و 3) مدل + ابزار، حداکثر 3 دور
         result = chat_one_turn(messages)
@@ -121,6 +124,10 @@ def run_chat() -> None:
             # نتیجه تایید را به مکالمه اضافه کن تا مدل در دور بعدی بداند چه شد
             messages.append({"role": "system", "content": f"[نتیجه تایید درخواست تعمیراتی] {outcome['message']}"})
 
+        # 5) حافظه جدید را ذخیره کن (خلاصه غلتان + چند پیام آخر)
+        session_memory.save_turn(
+            session_memory.CLI_SESSION_ID, memory, messages, included
+        )
         print(f"[توکن‌ها: {count_messages_tokens(messages)} / {config.MAX_TOKENS}]")
 
 
