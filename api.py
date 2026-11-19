@@ -115,8 +115,9 @@ def chat(req: ChatRequest):
     messages, included = session_memory.build_context(SYSTEM_PROMPT, memory, req.message)
 
     before = len(messages)
-    result = chat_one_turn(messages)
-    session_memory.save_turn(session_id, memory, messages, included)
+    result = chat_one_turn(messages, active_plate=memory["active_plate"])
+    session_memory.save_turn(session_id, memory, messages, included,
+                             active_plate=result["active_plate"])
     used_tool = any(m.get("role") == "tool" for m in messages[before:])
 
     return ChatResponse(

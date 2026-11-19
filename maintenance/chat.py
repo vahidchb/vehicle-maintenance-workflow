@@ -9,10 +9,10 @@
 3. نتیجه ابزار (با شماره رهگیری) را برگردان به مدل.
 4. جواب نهایی را نشان بده و حافظه جدید را ذخیره کن.
 """
-from . import config, session_memory, store, workflow
+from . import config, session_memory, store, tool_select, workflow
 from .llm import ask
 from .memory import count_messages_tokens
-from .tools import TOOLS, run_tool
+from .tools import run_tool
 
 SYSTEM_PROMPT = """تو چت‌بات نگهداری و تعمیرات تجهیزات خودرویی هستی. کوتاه، واضح و به فارسی جواب بده.
 
@@ -28,6 +28,8 @@ SYSTEM_PROMPT = """تو چت‌بات نگهداری و تعمیرات تجهی�
 از حرف کاربر بفهم در کدام مرحله هستیم و قدم بعدی را خودت انجام بده؛
 مثلا اگر گفت «فلان خودرو فلان خرابی دارد»، اول خودرو را جستجو کن،
 بعد ارزیابی ثبت کن، بعد خرابی را برایش ثبت کن.
+در هر دور فقط ابزارهای قدم فعلی را می‌بینی؛ اگر ابزاری را نداری،
+یعنی قدم قبلش هنوز انجام نشده — اول همان قدم را انجام بده.
 
 بازدید و ارزیابی یک فرایند است: وقتی کاربر گفت «بازدید و ارزیابی»،
 اول بازدید را ثبت کن و بعد ارزیابی را روی همان بازدید ثبت کن؛
@@ -100,7 +102,7 @@ def run_chat() -> None:
         )
 
         # 2) و 3) مدل + ابزار، حداکثر 3 دور
-        result = chat_one_turn(messages)
+        result = chat_one_turn(messages, active_plate=memory["active_plate"])
         print(f"\nبات: {result['reply']}")
 
         # 4) اگر درخواست تعمیراتی آماده شد، در ترمینال از کاربر تایید بگیر
@@ -124,9 +126,10 @@ def run_chat() -> None:
             # نتیجه تایید را به مکالمه اضافه کن تا مدل در دور بعدی بداند چه شد
             messages.append({"role": "system", "content": f"[نتیجه تایید درخواست تعمیراتی] {outcome['message']}"})
 
-        # 5) حافظه جدید را ذخیره کن (خلاصه غلتان + چند پیام آخر)
+        # 5) حافظه جدید را ذخیره کن (خلاصه غلتان + چند پیام آخر + پلاک فعال)
         session_memory.save_turn(
-            session_memory.CLI_SESSION_ID, memory, messages, included
+            session_memory.CLI_SESSION_ID, memory, messages, included,
+            active_plate=result["active_plate"],
         )
         print(f"[توکن‌ها: {count_messages_tokens(messages)} / {config.MAX_TOKENS}]")
 
@@ -188,25 +191,37 @@ def _auto_create_confirmations(known_faults: set[str], known_inspections: set[st
     return None
 
 
-def chat_one_turn(messages: list[dict]) -> dict:
+def chat_one_turn(messages: list[dict], active_plate: str | None = None) -> dict:
     """یک پیام کاربر را جواب بده؛ ابزار را هم در همین تابع مدیریت کن.
 
-    برمی‌گرداند: {"reply": جواب نهایی، "pending_confirmation": تاییدیه در انتظار یا None}
+    active_plate: پلاک خودروی فعلی سشن (از session_memory)؛ اگر داده نشد،
+    پلاک از پیام کاربر یا از نتیجه ابزارهای همین دور پیدا می‌شود.
+
+    برمی‌گرداند: {"reply": جواب نهایی،
+                  "pending_confirmation": تاییدیه در انتظار یا None،
+                  "active_plate": پلاک خودروی فعلی بعد از این دور}
     اگر در این دور، درخواست تعمیراتی آماده شده باشد، pending_confirmation پر است
     تا رابط کاربری پنجره تایید را نشان بدهد.
+
+    انتخاب ابزار: قبل از «هر» فراخوانی به مدل، زیرمجموعه ابزارها از اول
+    حساب می‌شود (tool_select) — پس اگر در دور اول پلاک مشخص شد
+    (مثلا جستجوی خودرو)، در دور دوم ابزار قدم بعدی همان خودرو هم
+    در دسترس مدل است و زنجیره چندقدمی نمی‌شکند.
     """
     # تاییدیه‌های قبلی را نگه دار تا فقط تاییدیه «جدید» این دور را برگردانیم
     seen_ids = {p["confirmation_id"] for p in store.list_pending_confirmations()}
 
     for _ in range(3):  # حداکثر 3 بار ابزار
-        response = ask(messages, tools=TOOLS)
+        tools = tool_select.select_tools(messages, active_plate)
+        response = ask(messages, tools=tools)
         msg = response.choices[0].message
         messages.append(msg.model_dump(exclude_none=True))
 
         # اگر مدل ابزار نخواست، جواب نهایی همین است
         if not msg.tool_calls:
             return {"reply": msg.content or "",
-                    "pending_confirmation": _new_confirmation(seen_ids)}
+                    "pending_confirmation": _new_confirmation(seen_ids),
+                    "active_plate": active_plate or ""}
 
         # اگر ابزار خواست، اجراش کن و نتیجه را به مکالمه اضافه کن
         # (رکوردهای قبل از اجرا را نگه دار تا خرابی/بازدید «جدید» این دور را بشناسیم)
@@ -222,6 +237,13 @@ def chat_one_turn(messages: list[dict]) -> dict:
                     "content": result,
                 }
             )
+            # خودروی فعال را از همین فراخوانی به‌روز کن تا دور بعدی
+            # ابزارهای قدم بعدی همین خودرو را بگیرد.
+            found = tool_select.plate_from_tool_call(
+                call.function.name, call.function.arguments, result
+            )
+            if found is not None:
+                active_plate = found
 
         # تایید خودکار: بعد از ثبت خرابی یا بازدید جدید، اگر خرابی بدون
         # درخواست هست، تاییدیه را خودکار بساز تا مودال تایید باز شود
@@ -234,4 +256,5 @@ def chat_one_turn(messages: list[dict]) -> dict:
             })
 
     return {"reply": "متاسفم، نتوانستم جواب کامل بدهم.",
-            "pending_confirmation": _new_confirmation(seen_ids)}
+            "pending_confirmation": _new_confirmation(seen_ids),
+            "active_plate": active_plate or ""}

@@ -41,16 +41,18 @@ SUMMARY_PREFIX = "خلاصه مکالمه قبلی:"
 def load_session(session_id: str) -> dict:
     """حافظه یک سشن را از دیتابیس بخوان.
 
-    برمی‌گرداند: {"summary": خلاصه غلتان، "recent": [چند پیام آخر]}
+    برمی‌گرداند: {"summary": خلاصه غلتان، "recent": [چند پیام آخر],
+    "active_plate": پلاک خودروی فعلی سشن ("" اگر هنوز نیست)}
     اگر سشن نبود، حافظه خالی برگردان (خطا نمی‌دهد).
     """
     with db.connect() as conn:
         row = conn.execute(
-            "SELECT summary, recent_messages FROM session_memory WHERE session_id = ?",
+            "SELECT summary, recent_messages, active_plate FROM session_memory"
+            " WHERE session_id = ?",
             (session_id,),
         ).fetchone()
     if row is None:
-        return {"summary": "", "recent": []}
+        return {"summary": "", "recent": [], "active_plate": ""}
     try:
         recent = json.loads(row["recent_messages"])
     except (ValueError, TypeError):
@@ -58,21 +60,30 @@ def load_session(session_id: str) -> dict:
     return {
         "summary": row["summary"] or "",
         "recent": recent if isinstance(recent, list) else [],
+        "active_plate": row["active_plate"] or "",
     }
 
 
-def save_session(session_id: str, summary: str, recent: list[dict]) -> None:
-    """حافظه یک سشن را در دیتابیس بنویس (اگر بود، جایگزین کن)."""
+def save_session(session_id: str, summary: str, recent: list[dict],
+                 active_plate: str | None = None) -> None:
+    """حافظه یک سشن را در دیتابیس بنویس (اگر بود، جایگزین کن).
+
+    اگر active_plate داده نشد (None)، پلاک قبلی همان سشن حفظ می‌شود؛
+    برای پاک کردنش، رشته خالی "" بده.
+    """
+    if active_plate is None:
+        active_plate = load_session(session_id)["active_plate"]
     with db.lock:
         with db.connect() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO session_memory"
-                " (session_id, summary, recent_messages, updated_at)"
-                " VALUES (?, ?, ?, ?)",
+                " (session_id, summary, recent_messages, active_plate, updated_at)"
+                " VALUES (?, ?, ?, ?, ?)",
                 (
                     session_id,
                     summary or "",
                     json.dumps(list(recent), ensure_ascii=False),
+                    active_plate or "",
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
@@ -157,12 +168,14 @@ def _summarize_history(old_summary: str, overflow: list[dict]) -> str:
 
 
 def save_turn(session_id: str, old_memory: dict, messages: list[dict],
-              included_count: int) -> dict:
+              included_count: int, active_plate: str | None = None) -> dict:
     """بعد از یک دور چت، حافظه سشن را به‌روز کن و ذخیره کن.
 
     messages: همان لیستی که build_context ساخت و chat_one_turn
     جواب و نتیجه ابزارها را به آن اضافه کرد (درجا عوض شده).
     included_count: عددی که build_context برگرداند.
+    active_plate: پلاک خودروی فعلی این دور (از chat_one_turn)؛
+    اگر None باشد، پلاک قبلی سشن حفظ می‌شود.
 
     منطق: تاریخچه کامل = پیام‌های ذخیره‌شده قبلی + پیام‌های جدید این دور.
     از این تاریخچه، چند پیام آخر عیناً می‌مانند و بقیه به خلاصه غلتان
@@ -170,7 +183,7 @@ def save_turn(session_id: str, old_memory: dict, messages: list[dict],
     هیچ پیامی گم نمی‌شود — حتی اگر در این دور به‌خاطر بودجه توکن
     در کانتکس نیامده باشد.
 
-    برمی‌گرداند: حافظه جدید {"summary": ..., "recent": ...}.
+    برمی‌گرداند: حافظه جدید {"summary": ...، "recent": ...، "active_plate": ...}.
     """
     # پیام‌های جدید این دور = همه پیام‌ها به‌جز [system] + [خلاصه؟] + [پنجره قبلی]
     prefix = 1 + (1 if old_memory["summary"] else 0) + included_count
@@ -185,5 +198,7 @@ def save_turn(session_id: str, old_memory: dict, messages: list[dict],
     else:
         summary = old_memory["summary"]
 
-    save_session(session_id, summary, recent_new)
-    return {"summary": summary, "recent": recent_new}
+    if active_plate is None:
+        active_plate = old_memory.get("active_plate", "")
+    save_session(session_id, summary, recent_new, active_plate)
+    return {"summary": summary, "recent": recent_new, "active_plate": active_plate}

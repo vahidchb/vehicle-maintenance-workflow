@@ -33,6 +33,10 @@ LANGSMITH_PROJECT = get_setting("LANGSMITH_PROJECT", "vehicle-maintenance-workfl
 MAX_TOKENS = int(get_setting("MAX_TOKENS", "4000"))
 # در compaction این تعداد پیام آخر دست‌نخورده می‌مانند.
 KEEP_LAST_MESSAGES = int(get_setting("KEEP_LAST_MESSAGES", "4"))
+# انتخاب پویای ابزار (tool_select.py): فقط ابزارهای لازم هر درخواست
+# فرستاده می‌شوند. با off همه ابزارها فرستاده می‌شوند — برای مقایسه
+# با/بدون انتخاب (A/B). پیش‌فرض روشن است.
+TOOL_SELECTION = get_setting("TOOL_SELECTION", "on")
 
 
 def check_config() -> list[str]:
