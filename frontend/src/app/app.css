@@ -189,6 +189,21 @@ tbody tr.selected { background: rgba(112, 224, 194, 0.10); }
 .modal-icon svg { width: 30px; height: 30px; }
 .modal h2 { font-size: 19px; color: var(--text); margin: 0 0 6px; }
 .modal p.modal-sub { color: var(--muted); font-size: 13.5px; margin: 0 0 18px; line-height: 1.8; }
+/* باکس گزارش بازدید در مودال تایید — کارت سبز تیره با بوردر نعنایی و هاله ملایم */
+.inspection-box {
+  background: linear-gradient(180deg, rgba(4, 163, 111, 0.12), rgba(98, 159, 176, 0.06));
+  border: 1px solid var(--line2); border-radius: 14px;
+  padding: 14px 16px 4px; margin-bottom: 16px; text-align: right;
+  box-shadow: 0 0 22px rgba(112, 224, 194, 0.10), inset 0 1px 0 rgba(112, 224, 194, 0.10);
+}
+.inspection-box h3 {
+  font-size: 14px; margin: 0 0 8px; color: var(--mint);
+  display: flex; align-items: center; gap: 6px;
+}
+.inspection-box h3::before { content: '🔍'; font-size: 13px; }
+.inspection-box .modal-summary {
+  background: transparent; border: none; padding: 0; margin-bottom: 8px;
+}
 .modal-summary {
   background: rgba(1, 5, 4, 0.5); border: 1px solid var(--line); border-radius: 14px;
   padding: 6px 16px; margin-bottom: 20px; text-align: right;

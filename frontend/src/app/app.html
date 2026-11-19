@@ -9,13 +9,9 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg>
         <span>چت</span>
       </button>
-      <button (click)="startArticleSearch()" title="سرچ مقاله">
+      <button (click)="startArticleSearch()" [class.active]="view() === 'articles'" title="سرچ مقاله">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
         <span>سرچ مقاله</span>
-      </button>
-      <button (click)="startEvaluation()" title="ثبت ارزیابی">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
-        <span>ثبت ارزیابی</span>
       </button>
       <button (click)="openGrid('equipment')" [class.active]="view() === 'grid' && gridModuleKey() === 'equipment'" title="سرچ خودرو">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17v-2l2-5a2 2 0 0 1 1.9-1.3h10.2A2 2 0 0 1 19 10l2 5v2"/><path d="M3 17h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/></svg>
@@ -74,6 +70,47 @@
             <button (click)="send()" [disabled]="loading()">ارسال</button>
           </div>
           <p class="hint">همه ثبت‌ها با چت انجام می‌شود؛ گریدها فقط برای دیدن رکوردها هستند.</p>
+        </footer>
+      </section>
+    }
+
+    <!-- نمای سرچ مقاله — چت جدا با هیستوری جدا (تاریخچه چت اصلی اینجا نیست) -->
+    @if (view() === 'articles') {
+      <section class="card chat-card">
+        <header>
+          <h1>سرچ مقاله</h1>
+          <p class="subtitle">فقط برای جستجو و خواندن مقاله درباره قطعات و نگهداری خودرو</p>
+          <div class="token-bar">
+            <div class="token-fill" [style.width.%]="articleTokenPercent()"></div>
+          </div>
+          <p class="tokens">توکن‌ها: {{ articleTokens() }} از {{ articleMaxTokens() }}</p>
+        </header>
+
+        <div class="messages">
+          @for (msg of articleMessages(); track $index) {
+            <div class="message" [class.user]="msg.role === 'user'" [class.bot]="msg.role === 'bot'">
+              <p>{{ msg.text }}</p>
+              @if (msg.usedTool) {
+                <span class="tool">🔧 از ابزار سرچ مقاله استفاده شد</span>
+              }
+            </div>
+          }
+          @if (articleLoading()) {
+            <div class="message bot typing"><p>در حال فکر کردن…</p></div>
+          }
+        </div>
+
+        <footer>
+          <div class="composer">
+            <input
+              [(ngModel)]="articleInput"
+              (keyup.enter)="sendArticle()"
+              placeholder="درباره چه قطعه‌ای مقاله می‌خواهی؟…"
+              [disabled]="articleLoading()"
+            />
+            <button (click)="sendArticle()" [disabled]="articleLoading()">ارسال</button>
+          </div>
+          <p class="hint">این چت جدا از چت اصلی است و تاریخچه آن را نشان نمی‌دهد.</p>
         </footer>
       </section>
     }
@@ -185,7 +222,27 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
         </div>
         <h2>تایید درخواست تعمیراتی</h2>
-        <p class="modal-sub">درخواست زیر آماده ثبت است؛ لطفاً تجهیز و خرابی را بررسی کن و تایید یا رد کن.</p>
+        <p class="modal-sub">درخواست زیر آماده ثبت است؛ اول گزارش بازدید و بعد تجهیز و خرابی را بررسی کن و تایید یا رد کن.</p>
+        <!-- گزارش بازدید — اولِ مودال، قبل از تجهیز و خرابی -->
+        @if (pendingConfirmation()!.inspection) {
+          <div class="inspection-box">
+            <h3>گزارش بازدید</h3>
+            <dl class="modal-summary">
+              <div class="modal-row">
+                <dt>شماره رهگیری</dt>
+                <dd>{{ pendingConfirmation()!.inspection!.tracking }}</dd>
+              </div>
+              <div class="modal-row">
+                <dt>زیرمجموعه</dt>
+                <dd>{{ pendingConfirmation()!.inspection!.subsystem }}</dd>
+              </div>
+              <div class="modal-row">
+                <dt>توضیح</dt>
+                <dd>{{ pendingConfirmation()!.inspection!.note || '—' }}</dd>
+              </div>
+            </dl>
+          </div>
+        }
         <dl class="modal-summary">
           <div class="modal-row">
             <dt>تجهیز</dt>

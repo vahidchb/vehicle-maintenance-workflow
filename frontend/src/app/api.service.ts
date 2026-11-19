@@ -21,6 +21,8 @@ export interface PendingConfirmation {
   fault_id: string;
   fault: string;
   description: string;
+  // گزارش بازدیدی که ارزیابی روی آن ثبت شده؛ اولِ مودال نشان داده می‌شود
+  inspection: { tracking: string; subsystem: string; note: string } | null;
 }
 
 export interface ConfirmResult {
@@ -67,10 +69,12 @@ export class ApiService {
   }
 
   // تایید یا رد درخواست تعمیراتی آماده‌شده (از مودال تایید)
-  confirmRepairRequest(confirmationId: string, confirmed: boolean): Observable<ConfirmResult> {
+  // sessionId: جلسه چتی که تاییدیه از آن آمده، تا نتیجه تایید به مکالمه‌اش اضافه شود
+  confirmRepairRequest(confirmationId: string, confirmed: boolean, sessionId: string | null): Observable<ConfirmResult> {
     return this.http.post<ConfirmResult>(`${this.base}/confirm-repair-request`, {
       confirmation_id: confirmationId,
       confirmed,
+      session_id: sessionId,
     });
   }
 

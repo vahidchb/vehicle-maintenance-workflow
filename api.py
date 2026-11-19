@@ -66,6 +66,9 @@ class ChatResponse(BaseModel):
 class ConfirmRequest(BaseModel):
     confirmation_id: str
     confirmed: bool
+    # جلسه چتی که تاییدیه از آن آمده؛ اگر بدهی، نتیجه تایید به مکالمه‌اش
+    # اضافه می‌شود تا مدل در دور بعدی بداند درخواست ثبت (یا رد) شده و دوباره نپرسد
+    session_id: str | None = None
 
 
 class ConfirmResponse(BaseModel):
@@ -120,8 +123,15 @@ def confirm_repair_request(req: ConfirmRequest):
 
     تایید → درخواست ثبت می‌شود و شماره رهگیری REQ می‌گیرد.
     رد → تاییدیه پاک می‌شود و هیچ درخواستی ثبت نمی‌شود.
+    یک بار تایید کافی است؛ نتیجه به مکالمه اضافه می‌شود تا مدل دوباره نپرسد.
     """
     outcome = confirm_repair_request_step(req.confirmation_id, req.confirmed)
+    # نتیجه تایید را به جلسه چت اضافه کن تا مدل در دور بعدی بداند چه شد
+    # (همان کاری که نسخه ترمینالی می‌کند)
+    if req.session_id and req.session_id in sessions:
+        sessions[req.session_id].append(
+            {"role": "system", "content": f"[نتیجه تایید درخواست تعمیراتی] {outcome['message']}"}
+        )
     return ConfirmResponse(
         ok=outcome["ok"],
         tracking=outcome["tracking"],

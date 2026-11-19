@@ -170,8 +170,13 @@ def approve_request(tracking: str) -> dict | None:
 # --- تاییدیه در انتظار (قبل از ثبت درخواست تعمیراتی) ---
 def add_pending_confirmation(plate: str, equipment_name: str, evaluation_id: str,
                              fault_id: str, fault_description: str,
-                             description: str = "") -> dict:
-    """یک درخواست تعمیراتی آماده کن که هنوز ثبت نشده و منتظر تایید کاربر است."""
+                             description: str = "",
+                             inspection: dict | None = None) -> dict:
+    """یک درخواست تعمیراتی آماده کن که هنوز ثبت نشده و منتظر تایید کاربر است.
+
+    inspection: گزارش بازدیدی که ارزیابی روی آن ثبت شده، برای نمایش
+    در پنجره تایید (شماره رهگیری، زیرمجموعه، توضیح)؛ اگر نبود None است.
+    """
     record = {
         "confirmation_id": next_tracking("CONF"),
         "plate": plate.strip(),
@@ -180,6 +185,7 @@ def add_pending_confirmation(plate: str, equipment_name: str, evaluation_id: str
         "fault_id": fault_id.strip().upper() if fault_id else "",
         "fault": fault_description,
         "description": description,
+        "inspection": inspection,
     }
     pending_confirmations[record["confirmation_id"]] = record
     return record

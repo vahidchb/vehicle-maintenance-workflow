@@ -9,7 +9,8 @@
 مراحل (هر مرحله یک شماره رهگیری می‌دهد):
 1. ثبت تجهیز (EQ) → 2. ثبت بازدید (INSP) → 3. ثبت ارزیابی (EV)
 → 4. ثبت خرابی (FLT، اختیاری) → 5. درخواست تعمیراتی (REQ)
-   (قبل از ثبت، کاربر تجهیز و خرابی را در پنجره تایید، تایید می‌کند)
+   (قبل از ثبت، کاربر اول گزارش بازدید و بعد تجهیز و خرابی را
+   در پنجره تایید می‌بیند و تایید می‌کند)
 → 6. تایید درخواست → 7. حکم کار (WO)
 
 بدون هیچ فریم‌ورکی؛ فقط تابع‌های ساده پایتون.
@@ -27,7 +28,7 @@ WORKFLOW_STAGES = [
     {"key": "fault", "name": "ثبت خرابی", "prefix": "FLT",
      "description": "خرابی مشاهده‌شده، وصل به یک ارزیابی. (اختیاری)"},
     {"key": "repair_request", "name": "ثبت درخواست تعمیراتی", "prefix": "REQ",
-     "description": "درخواست تعمیراتی که خرابی در آن هست؛ قبل از ثبت، کاربر در پنجره تایید، تجهیز و خرابی را تایید می‌کند."},
+     "description": "درخواست تعمیراتی که خرابی در آن هست؛ قبل از ثبت، کاربر در پنجره تایید اول گزارش بازدید و بعد تجهیز و خرابی را می‌بیند و تایید می‌کند."},
     {"key": "approval", "name": "تایید درخواست", "prefix": "REQ",
      "description": "کاربر درخواست تعمیراتی را تایید می‌کند."},
     {"key": "work_order", "name": "ثبت حکم کار", "prefix": "WO",
@@ -136,8 +137,8 @@ def register_repair_request_step(evaluation_id: str, fault_id: str = "",
     """قدم 5: درخواست تعمیراتی آماده کن؛ اول باید ارزیابی ثبت شده باشد.
 
     درخواست اینجا «ثبت» نمی‌شود؛ فقط یک تاییدیه در انتظار ساخته می‌شود.
-    کاربر باید تجهیز و خرابی را در پنجره تایید ببیند و تایید یا رد کند.
-    تا وقتی تایید نشده، مرحله workflow جلو نمی‌رود.
+    کاربر باید اول گزارش بازدید و بعد تجهیز و خرابی را در پنجره تایید
+    ببیند و تایید یا رد کند. تا وقتی تایید نشده، مرحله workflow جلو نمی‌رود.
     """
     evaluation = store.get_evaluation(evaluation_id)
     if evaluation is None:
@@ -159,6 +160,15 @@ def register_repair_request_step(evaluation_id: str, fault_id: str = "",
 
     vehicle = store.get_vehicle(evaluation["plate"])
     equipment_name = vehicle["name"] if vehicle else ""
+    # گزارش بازدیدی که ارزیابی روی آن ثبت شده؛ در پنجره تایید نشان داده می‌شود.
+    inspection = store.get_inspection(evaluation["inspection_id"])
+    inspection_summary = None
+    if inspection is not None:
+        inspection_summary = {
+            "tracking": inspection["tracking"],
+            "subsystem": inspection["subsystem"],
+            "note": inspection["note"],
+        }
     pending = store.add_pending_confirmation(
         plate=evaluation["plate"],
         equipment_name=equipment_name,
@@ -166,12 +176,15 @@ def register_repair_request_step(evaluation_id: str, fault_id: str = "",
         fault_id=fault_id,
         fault_description=fault["description"] if fault else "",
         description=description,
+        inspection=inspection_summary,
     )
     return {"ok": True, "needs_confirmation": True,
             "confirmation_id": pending["confirmation_id"],
             "summary": dict(pending),
             "message": "درخواست تعمیراتی آماده شد ولی هنوز ثبت نشده است؛ "
-                       "پنجره تایید برای کاربر باز می‌شود تا تجهیز و خرابی را تایید یا رد کند.\n"
+                       "پنجره تایید برای کاربر باز می‌شود تا اول گزارش بازدید و بعد تجهیز و خرابی را تایید یا رد کند.\n"
+                       f"بازدید: {inspection_summary['tracking'] if inspection_summary else '—'} "
+                       f"({inspection_summary['subsystem'] if inspection_summary else '—'})\n"
                        f"تجهیز: {equipment_name} (پلاک {evaluation['plate']})\n"
                        f"خرابی: {fault['description'] if fault else '—'}"}
 

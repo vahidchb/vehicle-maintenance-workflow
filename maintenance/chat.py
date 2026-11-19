@@ -33,7 +33,7 @@ SYSTEM_PROMPT = """تو چت‌بات نگهداری و تعمیرات تجهی�
 اگر کاربر کلمه‌ای مثل موتور یا چرخ گفت همان را بگذار، وگرنه خالی بگذار.
 
 درخواست تعمیراتی: وقتی آماده شد، به کاربر بگو پنجره تایید باز می‌شود
-تا تجهیز و خرابی را ببیند و تایید یا رد کند؛ شماره رهگیری را فقط بعد از تایید می‌گیرد.
+تا اول گزارش بازدید و بعد تجهیز و خرابی را ببیند و تایید یا رد کند؛ شماره رهگیری را فقط بعد از تایید می‌گیرد.
 
 در هر مرحله شماره رهگیری را به کاربر بده.
 اگر کاربر لیست چیزی را خواست (مثلا لیست ارزیابی‌ها)، بگو گرید آن را نشان می‌دهد و خلاصه‌اش را بگو.
@@ -78,6 +78,12 @@ def run_chat() -> None:
         pending = result["pending_confirmation"]
         if pending is not None:
             print("\n--- تایید درخواست تعمیراتی ---")
+            inspection = pending.get("inspection")
+            if inspection:
+                print("گزارش بازدید:")
+                print(f"  شماره رهگیری: {inspection['tracking']}")
+                print(f"  زیرمجموعه: {inspection['subsystem']}")
+                print(f"  توضیح: {inspection['note'] or '—'}")
             print(f"تجهیز: {pending['equipment']} (پلاک {pending['plate']})")
             print(f"خرابی: {pending['fault'] or '—'}")
             if pending["description"]:

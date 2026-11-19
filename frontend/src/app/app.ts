@@ -8,7 +8,7 @@ interface ChatMessage {
   usedTool?: boolean;
 }
 
-type View = 'chat' | 'grid' | 'modules';
+type View = 'chat' | 'articles' | 'grid' | 'modules';
 
 // ستون‌های هر گرید: کلید فیلد + برچسب فارسی
 const COLUMNS: Record<string, { key: string; label: string }[]> = {
@@ -107,9 +107,21 @@ export class App {
   maxTokens = signal(4000);
   sessionId: string | null = null;
 
+  // --- سرچ مقاله: چت جدا با هیستوری و جلسه جدا (تاریخچه چت اصلی اینجا نیست) ---
+  articleMessages = signal<ChatMessage[]>([
+    { role: 'bot', text: 'اینجا فقط سرچ مقاله است. مثلا بگو: «مقاله درباره نگهداری موتور خودرو پیدا کن»؛ تاریخچه چت اصلی اینجا نمایش داده نمی‌شود.' },
+  ]);
+  articleInput = signal('');
+  articleLoading = signal(false);
+  articleTokens = signal(0);
+  articleMaxTokens = signal(4000);
+  articleSessionId: string | null = null;
+
   // --- مودال تایید درخواست تعمیراتی ---
   pendingConfirmation = signal<PendingConfirmation | null>(null);
   confirming = signal(false);
+  // جلسه چتی که تاییدیه از آن آمده (چت اصلی یا سرچ مقاله)
+  confirmationSessionId: string | null = null;
 
   // --- گرید ---
   gridModuleKey = signal('');
@@ -128,6 +140,12 @@ export class App {
   tokenPercent(): number {
     if (this.maxTokens() === 0) return 0;
     return Math.min(100, Math.round((this.tokens() / this.maxTokens()) * 100));
+  }
+
+  // درصد پر شدن توکن‌ها در چت سرچ مقاله
+  articleTokenPercent(): number {
+    if (this.articleMaxTokens() === 0) return 0;
+    return Math.min(100, Math.round((this.articleTokens() / this.articleMaxTokens()) * 100));
   }
 
   send() {
@@ -149,6 +167,7 @@ export class App {
         ]);
         // اگر درخواست تعمیراتی آماده شده باشد، مودال تایید را باز کن
         if (res.pending_confirmation) {
+          this.confirmationSessionId = res.session_id;
           this.pendingConfirmation.set(res.pending_confirmation);
         }
         this.loading.set(false);
@@ -163,32 +182,76 @@ export class App {
     });
   }
 
+  // ارسال پیام در چت سرچ مقاله — مثل send ولی با جلسه و لیست پیام جدا
+  sendArticle() {
+    const text = this.articleInput().trim();
+    if (!text || this.articleLoading()) return;
+
+    this.articleMessages.update((list) => [...list, { role: 'user', text }]);
+    this.articleInput.set('');
+    this.articleLoading.set(true);
+
+    this.api.send(text, this.articleSessionId).subscribe({
+      next: (res) => {
+        this.articleSessionId = res.session_id;
+        this.articleTokens.set(res.tokens);
+        this.articleMaxTokens.set(res.max_tokens);
+        this.articleMessages.update((list) => [
+          ...list,
+          { role: 'bot', text: res.reply, usedTool: res.used_tool },
+        ]);
+        // مودال تایید مثل چت اصلی کار می‌کند
+        if (res.pending_confirmation) {
+          this.confirmationSessionId = res.session_id;
+          this.pendingConfirmation.set(res.pending_confirmation);
+        }
+        this.articleLoading.set(false);
+      },
+      error: () => {
+        this.articleMessages.update((list) => [
+          ...list,
+          { role: 'bot', text: 'خطا: اول API پایتون را اجرا کن: python -m uvicorn api:app --reload --port 8000' },
+        ]);
+        this.articleLoading.set(false);
+      },
+    });
+  }
+
   // --- ناوبری سایدبار ---
   goChat() {
     this.view.set('chat');
   }
 
   // تایید یا رد درخواست تعمیراتی از مودال؛ نتیجه به‌صورت پیام چت اضافه می‌شود
+  // یک بار تایید کافی است؛ بک‌اند نتیجه را به جلسه چت اضافه می‌کند تا مدل دوباره نپرسد
   confirmRepairRequest(confirmed: boolean) {
     const pending = this.pendingConfirmation();
     if (!pending || this.confirming()) return;
 
     this.confirming.set(true);
-    this.api.confirmRepairRequest(pending.confirmation_id, confirmed).subscribe({
+    this.api.confirmRepairRequest(pending.confirmation_id, confirmed, this.confirmationSessionId).subscribe({
       next: (res) => {
-        this.messages.update((list) => [...list, { role: 'bot', text: res.message }]);
+        this.addConfirmationResult(res.message);
         this.pendingConfirmation.set(null);
+        this.confirmationSessionId = null;
         this.confirming.set(false);
       },
       error: () => {
-        this.messages.update((list) => [
-          ...list,
-          { role: 'bot', text: 'خطا: نتوانستم تایید را ثبت کنم؛ API پایتون را چک کن.' },
-        ]);
+        this.addConfirmationResult('خطا: نتوانستم تایید را ثبت کنم؛ API پایتون را چک کن.');
         this.pendingConfirmation.set(null);
+        this.confirmationSessionId = null;
         this.confirming.set(false);
       },
     });
+  }
+
+  // نتیجه تایید را به همان چتی اضافه کن که تاییدیه از آن آمده بود
+  private addConfirmationResult(text: string) {
+    if (this.confirmationSessionId !== null && this.confirmationSessionId === this.articleSessionId) {
+      this.articleMessages.update((list) => [...list, { role: 'bot', text }]);
+    } else {
+      this.messages.update((list) => [...list, { role: 'bot', text }]);
+    }
   }
 
   // کلاس بج وضعیت، بر اساس مقدار فیلد status
@@ -198,15 +261,9 @@ export class App {
     return 'badge badge-info';
   }
 
-  // آیکن‌های عملیاتی: یک پیام آماده در چت می‌گذارند، فرم ندارند
+  // سرچ مقاله: نمای جدا با هیستوری جدا، نه چت اصلی
   startArticleSearch() {
-    this.input.set('مقاله درباره نگهداری موتور خودرو پیدا کن');
-    this.view.set('chat');
-  }
-
-  startEvaluation() {
-    this.input.set('برای خودروی با پلاک ... ارزیابی ثبت کن');
-    this.view.set('chat');
+    this.view.set('articles');
   }
 
   openGrid(moduleKey: string) {
