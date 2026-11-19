@@ -7,6 +7,8 @@
 گریدها و نمودار ماژول‌ها هم از /api/modules و /api/records می‌خوانند.
 """
 import uuid
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,9 +16,18 @@ from pydantic import BaseModel
 from maintenance import config, store
 from maintenance.chat import SYSTEM_PROMPT, chat_one_turn
 from maintenance.memory import count_messages_tokens, needs_compaction, compact_messages
+from maintenance.seed import seed_demo_data
 from maintenance.workflow import WORKFLOW_STAGES, confirm_repair_request_step
 
-app = FastAPI(title="Vehicle Maintenance Workflow")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """موقع بالا آمدن API، داده نمایشی را یک بار بساز (اگر store خالی باشد)."""
+    seed_demo_data()
+    yield
+
+
+app = FastAPI(title="Vehicle Maintenance Workflow", lifespan=lifespan)
 
 # Angular روی پورت 4200 اجرا می‌شود؛ اجازه بده به API وصل شود.
 app.add_middleware(
