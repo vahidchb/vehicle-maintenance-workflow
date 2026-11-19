@@ -1,5 +1,6 @@
 // نمایشگر سه‌بعدی خودرو — Three.js + مدل GLB
-// مدل: sedan.glb (Kenney Car Kit، CC0) در public/models/
+// مدل: samand.glb — سمند X7 از Sketchfab (Mpgs.studio3DModels، CC-BY-4.0)،
+// با gltfpack -cc از دانلود glTF اسکچ‌فب به یک GLB فشرده تبدیل شده است.
 // اگر مدل لود نشود، کامپوننت رویداد loadFailed را می‌فرستد و کامپوننت
 // والد (App) گردونه عکس را به‌جای آن نشان می‌دهد.
 import {
@@ -16,26 +17,36 @@ import {
 import type * as THREE from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// مسیر مدل سه‌بعدی — برای عوض کردن خودرو بعدا کافی است این فایل را
-// با یک GLB دیگر عوض کنی (نام گره‌های چرخ باید با wheel- شروع شود
-// و گره بدنه body باشد تا نمای منفجرشده کار کند)
-const MODEL_URL = '/models/sedan.glb';
+// مسیر مدل سه‌بعدی — برای عوض کردن خودرو بعدا کافی است این خط را
+// عوض کنی (sedan.glb سدان تستی به‌عنوان یدکی در همان پوشه مانده است).
+// نمای منفجرشده شعاعی است و روی هر مدلی که مش‌های مستقیم صحنه
+// یا گروه GLTF_SceneRootNode داشته باشد کار می‌کند.
+const MODEL_URL = '/models/samand.glb';
 // اندازه هدف خودرو در صحنه (طولانی‌ترین بُعد)، بر حسب واحد صحنه
+// (مدل سمند در واحد خامش خیلی بزرگ است — حدود ۷۴ واحد — و همین تناسب
+// آن را به اندازه صحنه کوچک می‌کند؛ پس دوربین و کف دست نمی‌خورند)
 const TARGET_SIZE = 3.2;
 // فاصله دوربین از مرکز خودرو
 const CAMERA_DISTANCE = 5.2;
 // چند ثانیه بعد از رها کردن درگ، چرخش خودکار برگردد
 const AUTOROTATE_RESUME_MS = 3000;
-// چقدر قطعه‌ها موقع انفجار از هم دور شوند (واحد محلی مدل)
+// چقدر قطعه‌ها موقع انفجار از هم دور شوند (واحد جهان صحنه — نه محلی مدل)
 const EXPLODE_DISTANCE = 0.45;
+// چرخ‌ها این‌قدر بیشتر از بقیه قطعه‌ها بیرون می‌روند
+const WHEEL_EXPLODE_FACTOR = 1.6;
+// قطعه‌ای که مرکزش از مرکز خودرو کمتر از این کسرِ قطر مدل فاصله دارد،
+// «وسط خودرو» حساب می‌شود و به بالا می‌رود (تکه‌های بدنه)
+const CENTERED_PART_THRESHOLD = 0.08;
 
 type ViewerState = 'loading' | 'ready' | 'error';
 
-// یک قطعه قابل انفجار: گره + جای اولش + جهتی که موقع انفجار می‌رود
+// یک قطعه قابل انفجار: گره + جای اولش + جهت محلی + فاصله محلی انفجار
+// (جهت و فاصله در فضای محلی والد قطعه‌اند، چون والد ممکن است چرخش/مقیاس داشته باشد)
 interface ExplodablePart {
   node: THREE.Object3D;
   home: THREE.Vector3;
   dir: THREE.Vector3;
+  dist: number;
 }
 
 @Component({
@@ -246,22 +257,82 @@ export class CarViewerComponent implements AfterViewInit, OnDestroy {
     this.collectParts(car);
   }
 
-  // قطعه‌های انفجار را از روی نام گره پیدا کن: چرخ‌ها (wheel-*) + بدنه (body)
+  // قطعه‌های انفجار — انفجار شعاعی (radial) روی ریشه‌های قطعه:
+  // (الف) مش‌های مستقیم صحنه (تکه‌های بدنه که gltfpack ادغام کرده)
+  // (ب) بچه‌های گروه GLTF_SceneRootNode (۴ گروه چرخ Tire_* + قطعه‌های کوچک)
+  // جهت هر قطعه از مرکز خودرو به سمت مرکز خودش است؛ چرخ‌ها بیشتر بیرون می‌روند.
+  // قطعه‌ای که مرکزش وسط خودروست (تکه بدنه) به بالا می‌رود، با ارتفاع پلکانی
+  // تا تکه‌ها روی هم نمانند. جهت و فاصله به فضای محلی والد برگردانده می‌شود،
+  // چون گره‌های والد (مثل GLTF_SceneRootNode) ممکن است چرخش/مقیاس داشته باشند.
   private collectParts(car: THREE.Group) {
     const THREE = this.three;
     if (!THREE) return;
     this.parts = [];
-    car.traverse((obj) => {
-      const name = obj.name.toLowerCase();
-      if (name.startsWith('wheel-')) {
-        // چرخ: به بیرون (علامت x) و کمی پایین
-        const dir = new THREE.Vector3(Math.sign(obj.position.x) || 1, -0.4, 0).normalize();
-        this.parts.push({ node: obj, home: obj.position.clone(), dir });
-      } else if (name === 'body') {
-        // بدنه: بالا
-        this.parts.push({ node: obj, home: obj.position.clone(), dir: new THREE.Vector3(0, 1, 0) });
+    car.updateMatrixWorld(true);
+
+    // مرکز و اندازه کل خودرو (بعد از جای‌گذاری وسط صحنه)
+    const modelBox = new THREE.Box3().setFromObject(car);
+    const modelCenter = modelBox.getCenter(new THREE.Vector3());
+    const modelDiagonal = modelBox.getSize(new THREE.Vector3()).length();
+
+    // ریشه‌های قطعه را جمع کن:
+    // (الف) بچه‌های مستقیم صحنه که مش دارند — مش مستقیم یا گروه چند-متریال
+    // (مدلی با چند متریال در GLTFLoader یک گروه می‌شود، نه یک مش)
+    // (ب) بچه‌های گروه GLTF_SceneRootNode (۴ گروه چرخ Tire_* + قطعه‌های کوچک)
+    const sceneRoot = car.getObjectByName('GLTF_SceneRootNode');
+    // شاخه‌ای از صحنه که GLTF_SceneRootNode زیر آن است (گروه Sketchfab_model) —
+    // قطعه‌هایش را جداگانه از بچه‌های GLTF_SceneRootNode می‌گیریم، نه خودش را
+    let sceneRootBranch: THREE.Object3D | null = null;
+    if (sceneRoot) {
+      sceneRootBranch = sceneRoot;
+      while (sceneRootBranch.parent && sceneRootBranch.parent !== car) {
+        sceneRootBranch = sceneRootBranch.parent;
       }
-    });
+    }
+    const roots: THREE.Object3D[] = [];
+    for (const child of car.children) {
+      if (child === sceneRootBranch) continue;
+      let hasMesh = false;
+      child.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) hasMesh = true;
+      });
+      if (hasMesh) roots.push(child);
+    }
+    if (sceneRoot) roots.push(...sceneRoot.children);
+
+    const partBox = new THREE.Box3();
+    const partCenter = new THREE.Vector3();
+    let centeredIndex = 0;
+    for (const root of roots) {
+      partBox.setFromObject(root);
+      if (partBox.isEmpty()) continue;
+      partBox.getCenter(partCenter);
+      // چرخ است؟ نام گره با Tire شروع می‌شود (نقطه و خط زیرین را حذف کن،
+      // چون در بعضی لودرها Tire.001 به Tire001 تبدیل می‌شود)
+      const isWheel = root.name.toLowerCase().replace(/[^a-z0-9]/g, '').startsWith('tire');
+      const dirWorld = partCenter.clone().sub(modelCenter);
+      let factor: number;
+      if (dirWorld.length() < modelDiagonal * CENTERED_PART_THRESHOLD) {
+        // مرکزش وسط خودروست — به بالا، با ارتفاع پلکانی
+        dirWorld.set(0, 1, 0);
+        factor = 0.4 + 0.25 * centeredIndex;
+        centeredIndex++;
+      } else {
+        dirWorld.normalize();
+        factor = isWheel ? WHEEL_EXPLODE_FACTOR : 1;
+      }
+      // جهت را به فضای محلی والد برگردان (چرخش والد را خنثی کن)
+      const parent = root.parent ?? car;
+      const dirLocal = dirWorld.clone().transformDirection(parent.matrixWorld.clone().invert());
+      // فاصله را به واحد محلی والد تبدیل کن (مقیاس والد را تقسیم کن)
+      const parentScale = parent.getWorldScale(new THREE.Vector3()).x || 1;
+      this.parts.push({
+        node: root,
+        home: root.position.clone(),
+        dir: dirLocal,
+        dist: (EXPLODE_DISTANCE * factor) / parentScale,
+      });
+    }
   }
 
   // حلقه رندر — بیرون از zone انگولار تا change detection هر فریم اجرا نشود
@@ -291,7 +362,7 @@ export class CarViewerComponent implements AfterViewInit, OnDestroy {
   // جای هر قطعه را بر اساس مقدار فعلی انفجار تنظیم کن
   private applyExplode() {
     for (const part of this.parts) {
-      part.node.position.copy(part.home).addScaledVector(part.dir, EXPLODE_DISTANCE * this.explodeFactor);
+      part.node.position.copy(part.home).addScaledVector(part.dir, part.dist * this.explodeFactor);
     }
   }
 
