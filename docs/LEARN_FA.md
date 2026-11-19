@@ -34,7 +34,8 @@ maintenance/llm.py  →  مدل توکن هاربور
 maintenance/tools.py → ابزارها (13 ابزار)
         ↓
 maintenance/workflow.py → ترتیب قدم‌ها + کنترل
-maintenance/store.py → رکوردها در حافظه
+maintenance/store.py → رکوردها در دیتابیس SQLite
+maintenance/db.py → اتصال و ساختار جدول‌های SQLite
 maintenance/memory.py → شمارش توکن + compaction
 ```
 
@@ -78,7 +79,8 @@ maintenance/memory.py → شمارش توکن + compaction
 | `api.py` | شروع نسخه وب | `chat()` ، `confirm_repair_request()` ، `modules()` ، `records()` |
 | `maintenance/config.py` | خواندن کلیدها از `.env` | `get_setting()` ، `check_config()` |
 | `maintenance/llm.py` | حرف زدن با مدل | `create_client()` ، `ask()` ، `ask_text()` |
-| `maintenance/store.py` | رکوردها در حافظه (+ تاییدیه‌های در انتظار) | `add_*()` ، `get_*()` ، `list_*()` ، `next_tracking()` ، `add_pending_confirmation()` |
+| `maintenance/db.py` | اتصال و ساختار دیتابیس SQLite | `init_db()` ، `connect()` ، `set_db_path()` |
+| `maintenance/store.py` | رکوردها در SQLite (+ تاییدیه‌های در انتظار) | `add_*()` ، `get_*()` ، `list_*()` ، `next_tracking()` ، `add_pending_confirmation()` |
 | `maintenance/workflow.py` | ترتیب قدم‌ها + کنترل | `current_stage()` ، `register_*_step()` ، `confirm_repair_request_step()` |
 | `maintenance/tools.py` | ابزارهای مدل | `register_*()` ، `search_*()` ، `run_tool()` |
 | `maintenance/memory.py` | توکن و خلاصه‌سازی | `count_tokens()` ، `needs_compaction()` ، `compact_messages()` |
@@ -162,10 +164,35 @@ maintenance/memory.py → شمارش توکن + compaction
 - `api.py`: همان `chat_one_turn()` پایتون را صدا می‌زند. یعنی منطق چت فقط یک جاست؛
   ترمینال و وب هر دو از همان استفاده می‌کنند.
 
-## ۹. داده نمایشی (seed) — چون دیتابیس نداریم
+## ۹. دیتابیس SQLite — رکوردها بعد از ری‌استارت می‌مانند
+
+قبلاً رکوردها فقط در حافظه (RAM) بودند و با خاموش شدن بک‌اند پاک می‌شدند.
+حالا در یک فایل ساده ذخیره می‌شوند: **`data/maintenance.db`**
+(با کتابخانه استاندارد پایتون `sqlite3`؛ هیچ پکیج جدیدی لازم نیست).
+
+- **۷ جدول**، یکی برای هر ماژول: `equipment` ،`inspections` ،`evaluations` ،
+  `faults` ،`repair_requests` ،`work_orders` ،`pending_confirmations`.
+  شماره رهگیری (مثل `EQ-001`) کلید اصلی هر جدول است.
+- **اولین اجرا:** موقع بالا آمدن برنامه، `init_db()` جدول‌ها را می‌سازد
+  (اگر نیستند) و بعد `seed.py` داده نمایشی را می‌سازد — فقط وقتی دیتابیس خالی است.
+- **شماره رهگیری ادامه پیدا می‌کند:** `next_tracking()` از بزرگ‌ترین شماره‌ای
+  که در جدول هست ادامه می‌دهد؛ پس بعد از ری‌استارت، تجهیز بعدی `EQ-004`
+  است، نه یک `EQ-001` تکراری.
+- **ظاهر `store.py` عوض نشده:** اسم و ورودی/خروجی تابع‌ها دقیقاً مثل قبل‌اند؛
+  فقط داخل‌شان به‌جای دیکشنری به دیتابیس حرف می‌زنند. برای همین
+  `workflow.py` و `tools.py` و `chat.py` و `api.py` بدون هیچ تغییری کار می‌کنند.
+- **امن برای چند نخ (thread):** هر عملیات اتصال تازه خودش را باز می‌کند
+  و زیر یک قفل انجام می‌شود؛ پس FastAPI با چند نخ مشکلی ندارد.
+- **ریست کردن:** برنامه را ببند، فایل `data/maintenance.db` را پاک کن و دوباره اجرا کن.
+- **دیدن داده‌ها:** با برنامه رایگان DB Browser for SQLite فایل را باز کن،
+  یا در ترمینال: `sqlite3 data/maintenance.db "SELECT * FROM equipment;"`.
+- مسیر فایل را می‌شود با متغیر محیطی `VEHICLE_DB_PATH` عوض کرد
+  (تست‌ها همین کار را می‌کنند و به یک فایل موقت وصل می‌شوند).
+
+## ۱۰. داده نمایشی (seed) — فقط وقتی دیتابیس خالی است
 
 - موقع اجرا (`api.py` با lifespan فست‌API و `main.py` در ترمینال)،
-  `maintenance/seed.py` یک بار داده نمایشی می‌سازد — فقط وقتی store خالی است،
+  `maintenance/seed.py` یک بار داده نمایشی می‌سازد — فقط وقتی دیتابیس خالی است،
   پس صدا زدن دوباره‌اش تکراری نمی‌سازد.
 - داده‌ها با همان قدم‌های `workflow.py` ساخته می‌شوند، نه با نوشتن مستقیم در store؛
   پس ترتیب و شماره رهگیری‌ها درست است و درخواست‌ها REQ واقعی‌اند
@@ -178,7 +205,7 @@ maintenance/memory.py → شمارش توکن + compaction
 - اسم «سمند LX» در گاراژ عکس `samand.jpg` می‌گیرد، چون `carImageFor()` با زیررشته
   (includes) اسم را می‌شناسد؛ «پژو» پیش‌فرض `pars.jpg` می‌گیرد.
 
-## ۱۰. تمرین‌های فردا (هر کدام ۵ دقیقه)
+## ۱۱. تمرین‌های فردا (هر کدام ۵ دقیقه)
 
 1. در `.env` مقدار `MAX_TOKENS` را به ۵۰۰ تغییر بده و ببین compaction زودتر اتفاق می‌افتد؟
 2. در `workflow.py` یک قدم جدید اضافه کن: مثلا بعد از حکم کار، قدم «تحویل خودرو» را اضافه کن.

@@ -5,3 +5,6 @@ venv/
 *.pyc
 frontend/node_modules/
 frontend/dist/
+# فایل دیتابیس SQLite — داده محلی هر کسی، روی گیت نمی‌رود
+data/*.db
+data/*.db-journal

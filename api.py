@@ -22,7 +22,9 @@ from maintenance.workflow import WORKFLOW_STAGES, confirm_repair_request_step
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """موقع بالا آمدن API، داده نمایشی را یک بار بساز (اگر store خالی باشد)."""
+    """موقع بالا آمدن API: اول جدول‌های دیتابیس را بساز، بعد داده نمایشی
+    را یک بار بساز (اگر دیتابیس خالی باشد)."""
+    store.init_db()
     seed_demo_data()
     yield
 
