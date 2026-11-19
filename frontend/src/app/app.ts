@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { ApiService, ModuleInfo, PendingConfirmation, StageInfo } from './api.service';
 
 interface ChatMessage {
@@ -8,7 +9,14 @@ interface ChatMessage {
   usedTool?: boolean;
 }
 
-type View = 'chat' | 'articles' | 'grid' | 'modules';
+// یک گروه از سوابق یک خودرو، برای مودال گاراژ
+interface VehicleRecordGroup {
+  key: string;
+  label: string;
+  items: { tracking: string; line: string }[];
+}
+
+type View = 'home' | 'garage' | 'chat' | 'articles' | 'grid' | 'modules';
 
 // ستون‌های هر گرید: کلید فیلد + برچسب فارسی
 const COLUMNS: Record<string, { key: string; label: string }[]> = {
@@ -85,6 +93,15 @@ const STAGE_MODULE: Record<string, string> = {
   work_order: 'work_orders',
 };
 
+// گروه‌های سوابق یک خودرو در مودال گاراژ: کلید ماژول + برچسب + چطور یک خط خلاصه بساز
+const VEHICLE_GROUPS: { key: string; label: string; line: (r: Record<string, unknown>) => string }[] = [
+  { key: 'inspections', label: 'بازدیدها', line: (r) => `${r['subsystem'] ?? ''}${r['note'] ? ' — ' + r['note'] : ''}` },
+  { key: 'evaluations', label: 'ارزیابی‌ها', line: (r) => String(r['summary'] ?? '') },
+  { key: 'faults', label: 'خرابی‌ها', line: (r) => String(r['description'] ?? '') },
+  { key: 'requests', label: 'درخواست‌های تعمیراتی', line: (r) => `${r['status'] ?? ''}${r['description'] ? ' — ' + r['description'] : ''}` },
+  { key: 'work_orders', label: 'حکم کارها', line: (r) => `${r['shop'] ?? ''} — قطعات: ${r['parts'] ?? ''}` },
+];
+
 @Component({
   selector: 'app-root',
   imports: [FormsModule],
@@ -94,8 +111,13 @@ const STAGE_MODULE: Record<string, string> = {
 export class App {
   private api = inject(ApiService);
 
-  // --- نما: چت، گرید، یا نمودار ماژول‌ها ---
-  view = signal<View>('chat');
+  // --- نما: خانه، گاراژ، چت، سرچ مقاله، گرید، یا نمودار ماژول‌ها ---
+  view = signal<View>('home');
+
+  constructor() {
+    // آمار صفحه خانه (تعداد رکورد هر ماژول) را از اول بارگذاری کن
+    this.refreshModules();
+  }
 
   // --- چت ---
   messages = signal<ChatMessage[]>([
@@ -123,6 +145,13 @@ export class App {
   // جلسه چتی که تاییدیه از آن آمده (چت اصلی یا سرچ مقاله)
   confirmationSessionId: string | null = null;
 
+  // --- گاراژ: همه رکوردها، با کلید ماژول (برای کارت‌ها، مرحله فعلی و مودال خودرو) ---
+  garageRecords = signal<Record<string, Record<string, unknown>[]>>({});
+  garageLoading = signal(false);
+  garageError = signal('');
+  // خودروی انتخاب‌شده در گاراژ؛ وقتی set است، مودالش باز است
+  selectedVehicle = signal<Record<string, unknown> | null>(null);
+
   // --- گرید ---
   gridModuleKey = signal('');
   gridModuleName = signal('');
@@ -131,7 +160,7 @@ export class App {
   gridError = signal('');
   selectedRecord = signal<Record<string, unknown> | null>(null);
 
-  // --- نمودار ماژول‌ها ---
+  // --- نمودار ماژول‌ها (+ آمار صفحه خانه) ---
   modules = signal<ModuleInfo[]>([]);
   stages = signal<StageInfo[]>([]);
   modulesLoading = signal(false);
@@ -146,6 +175,24 @@ export class App {
   articleTokenPercent(): number {
     if (this.articleMaxTokens() === 0) return 0;
     return Math.min(100, Math.round((this.articleTokens() / this.articleMaxTokens()) * 100));
+  }
+
+  // تعداد رکورد یک ماژول، برای آمار صفحه خانه
+  countForModule(moduleKey: string): number {
+    return this.modules().find((m) => m.key === moduleKey)?.count ?? 0;
+  }
+
+  // آمار ماژول‌ها را از API تازه کن (صفحه خانه و نمودار ماژول‌ها)
+  refreshModules() {
+    this.api.getModules().subscribe({
+      next: (res) => {
+        this.modules.set(res.modules);
+        this.stages.set(res.stages);
+      },
+      error: () => {
+        // اگر API خاموش باشد، آمار صفر می‌ماند؛ خطا را در گاراژ/گرید نشان می‌دهیم
+      },
+    });
   }
 
   send() {
@@ -217,9 +264,124 @@ export class App {
     });
   }
 
-  // --- ناوبری سایدبار ---
+  // --- ناوبری تب‌ها ---
+  goHome() {
+    this.view.set('home');
+    this.refreshModules();
+  }
+
   goChat() {
     this.view.set('chat');
+  }
+
+  // سرچ مقاله: نمای جدا با هیستوری جدا، نه چت اصلی
+  startArticleSearch() {
+    this.view.set('articles');
+  }
+
+  // --- گاراژ ---
+  openGarage() {
+    this.view.set('garage');
+    this.loadGarage();
+  }
+
+  // همه رکوردها را یکجا بگیر؛ داده کوچک و در حافظه است، فیلتر با پلاک سمت کلاینت است
+  loadGarage() {
+    this.garageLoading.set(true);
+    this.garageError.set('');
+    forkJoin({
+      equipment: this.api.getRecords('equipment'),
+      inspections: this.api.getRecords('inspections'),
+      evaluations: this.api.getRecords('evaluations'),
+      faults: this.api.getRecords('faults'),
+      requests: this.api.getRecords('requests'),
+      work_orders: this.api.getRecords('work_orders'),
+    }).subscribe({
+      next: (res) => {
+        const all: Record<string, Record<string, unknown>[]> = {};
+        for (const [key, value] of Object.entries(res)) all[key] = value.records;
+        this.garageRecords.set(all);
+        this.garageLoading.set(false);
+      },
+      error: () => {
+        this.garageError.set('خطا: اول API پایتون را اجرا کن.');
+        this.garageLoading.set(false);
+      },
+    });
+  }
+
+  // لیست تجهیزها برای کارت‌های گاراژ
+  vehicles(): Record<string, unknown>[] {
+    return this.garageRecords()['equipment'] ?? [];
+  }
+
+  // رکوردهای یک ماژول برای یک پلاک مشخص
+  private recordsForPlate(moduleKey: string, plate: string): Record<string, unknown>[] {
+    return (this.garageRecords()[moduleKey] ?? []).filter((r) => r['plate'] === plate);
+  }
+
+  // مرحله فعلی یک خودرو — همان منطق current_stage در workflow.py، سمت کلاینت
+  stageForPlate(plate: string): { key: string; name: string } {
+    const inspections = this.recordsForPlate('inspections', plate);
+    if (inspections.length === 0) return { key: 'inspection', name: 'ثبت بازدید' };
+    const evaluations = this.recordsForPlate('evaluations', plate);
+    if (evaluations.length === 0) return { key: 'evaluation', name: 'ثبت ارزیابی' };
+    const faults = this.recordsForPlate('faults', plate);
+    const requests = this.recordsForPlate('requests', plate);
+    if (faults.length === 0 && requests.length === 0) return { key: 'evaluation', name: 'ثبت ارزیابی' };
+    if (faults.length > 0 && requests.length === 0) return { key: 'fault', name: 'ثبت خرابی' };
+    const latest = requests[requests.length - 1];
+    if (latest['status'] !== 'تایید شده') return { key: 'repair_request', name: 'ثبت درخواست تعمیراتی' };
+    const orders = this.recordsForPlate('work_orders', plate);
+    if (orders.length === 0) return { key: 'approval', name: 'تایید درخواست' };
+    return { key: 'work_order', name: 'ثبت حکم کار' };
+  }
+
+  openVehicle(vehicle: Record<string, unknown>) {
+    this.selectedVehicle.set(vehicle);
+  }
+
+  closeVehicle() {
+    this.selectedVehicle.set(null);
+  }
+
+  // گروه‌های سوابق خودروی انتخاب‌شده، برای مودال گاراژ
+  vehicleGroups(): VehicleRecordGroup[] {
+    const vehicle = this.selectedVehicle();
+    if (!vehicle) return [];
+    const plate = String(vehicle['plate'] ?? '');
+    return VEHICLE_GROUPS.map((group) => ({
+      key: group.key,
+      label: group.label,
+      items: this.recordsForPlate(group.key, plate).map((r) => ({
+        tracking: String(r['tracking'] ?? ''),
+        line: group.line(r),
+      })),
+    }));
+  }
+
+  // --- ثبت با چت، از گاراژ: هیچ فرمی نیست؛ فقط به چت‌بات می‌رویم با پیام آماده ---
+  askChat(text: string) {
+    this.closeVehicle();
+    this.input.set(text);
+    this.view.set('chat');
+  }
+
+  // اضافه کردن تجهیز — از گاراژ، با پیام آماده در چت‌بات
+  addEquipment() {
+    this.askChat('یک خودروی [نام خودرو] با پلاک [پلاک] ثبت کن');
+  }
+
+  registerInspectionFor(plate: string) {
+    this.askChat(`برای خودروی با پلاک ${plate} بازدید ثبت کن`);
+  }
+
+  registerEvaluationFor(plate: string) {
+    this.askChat(`برای خودروی با پلاک ${plate} ارزیابی ثبت کن`);
+  }
+
+  registerFaultFor(plate: string) {
+    this.askChat(`برای خودروی با پلاک ${plate} خرابی ثبت کن: [شرح خرابی را اینجا بنویس]`);
   }
 
   // تایید یا رد درخواست تعمیراتی از مودال؛ نتیجه به‌صورت پیام چت اضافه می‌شود
@@ -259,11 +421,6 @@ export class App {
     if (value === 'تایید شده') return 'badge badge-ok';
     if (value === 'در انتظار تایید') return 'badge badge-wait';
     return 'badge badge-info';
-  }
-
-  // سرچ مقاله: نمای جدا با هیستوری جدا، نه چت اصلی
-  startArticleSearch() {
-    this.view.set('articles');
   }
 
   openGrid(moduleKey: string) {

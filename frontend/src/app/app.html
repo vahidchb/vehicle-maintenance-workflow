@@ -1,38 +1,187 @@
 <div class="layout">
-  <!-- سایدبار آیکن‌ها — باریک و ساده -->
-  <aside class="sidebar">
-    <div class="brand" title="نگهداری و تعمیرات">
+  <!-- نوار بالای صفحه — برند + ۴ تب اصلی -->
+  <header class="topbar">
+    <div class="brand" (click)="goHome()" title="خانه">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      <span class="brand-name">گاراژ هوشمند</span>
     </div>
-    <nav>
-      <button (click)="goChat()" [class.active]="view() === 'chat'" title="چت">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg>
-        <span>چت</span>
+    <nav class="tabs">
+      <button (click)="goHome()" [class.active]="view() === 'home'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+        <span>خانه</span>
       </button>
-      <button (click)="startArticleSearch()" [class.active]="view() === 'articles'" title="سرچ مقاله">
+      <button (click)="openGarage()" [class.active]="view() === 'garage'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17v-2l2-5a2 2 0 0 1 1.9-1.3h10.2A2 2 0 0 1 19 10l2 5v2"/><path d="M3 17h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/></svg>
+        <span>گاراژ</span>
+      </button>
+      <button (click)="goChat()" [class.active]="view() === 'chat'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg>
+        <span>چت‌بات</span>
+      </button>
+      <button (click)="startArticleSearch()" [class.active]="view() === 'articles'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
         <span>سرچ مقاله</span>
       </button>
-      <button (click)="openGrid('equipment')" [class.active]="view() === 'grid' && gridModuleKey() === 'equipment'" title="سرچ خودرو">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17v-2l2-5a2 2 0 0 1 1.9-1.3h10.2A2 2 0 0 1 19 10l2 5v2"/><path d="M3 17h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/></svg>
-        <span>سرچ خودرو</span>
-      </button>
-      <button (click)="openGrid('requests')" [class.active]="view() === 'grid' && gridModuleKey() === 'requests'" title="سرچ درخواست">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-        <span>سرچ درخواست</span>
-      </button>
-      <button (click)="openGrid('work_orders')" [class.active]="view() === 'grid' && gridModuleKey() === 'work_orders'" title="سرچ حکم کار">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg>
-        <span>سرچ حکم کار</span>
-      </button>
-      <button (click)="openModules()" [class.active]="view() === 'modules'" title="نمودار ماژول‌ها">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        <span>نمودار ماژول‌ها</span>
-      </button>
     </nav>
-  </aside>
+  </header>
 
   <main class="main">
+    <!-- نمای خانه — لندینگ به سبک 3DTUNNERS (فعلا بدون لاگین) -->
+    @if (view() === 'home') {
+      <!-- هیرو: تصویر تارا + عنوان بزرگ + دو دکمه -->
+      <section class="hero">
+        <img class="hero-img" src="/tara.jpg" alt="خودروی تارا" />
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+          <p class="hero-kicker">نگهداری و تعمیرات تجهیزات خودرویی</p>
+          <h1>گاراژ هوشمند، با <span class="accent">Workflow</span> صریح</h1>
+          <p class="hero-sub">از ثبت تجهیز تا حکم کار — همه مراحل با چت‌بات، با ترتیب مشخص و شماره رهگیری در هر قدم.</p>
+          <div class="hero-actions">
+            <button class="btn-primary" (click)="openGarage()">ورود به گاراژ</button>
+            <button class="btn-ghost" (click)="goChat()">گفتگو با چت‌بات</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- آمار زنده سامانه -->
+      <section class="stats-strip">
+        <div class="stat"><span class="stat-num">{{ countForModule('equipment') }}</span><span class="stat-label">تجهیز</span></div>
+        <div class="stat"><span class="stat-num">{{ countForModule('inspections') }}</span><span class="stat-label">بازدید</span></div>
+        <div class="stat"><span class="stat-num">{{ countForModule('requests') }}</span><span class="stat-label">درخواست تعمیراتی</span></div>
+        <div class="stat"><span class="stat-num">{{ countForModule('work_orders') }}</span><span class="stat-label">حکم کار</span></div>
+      </section>
+
+      <!-- چطور کار می‌کند؟ — ۴ مرحله اصلی -->
+      <section class="home-section">
+        <h2>چطور کار می‌کند؟</h2>
+        <p class="section-sub">چهار قدم اصلی؛ هر قدم شماره رهگیری خودش را دارد و قدم بعدی بدون قدم قبلی انجام نمی‌شود.</p>
+        <div class="steps-row">
+          <div class="how-card">
+            <span class="how-num">۱</span>
+            <h3>ثبت تجهیز</h3>
+            <p>خودرو با شماره پلاک وارد سیستم می‌شود.</p>
+            <span class="tracking">EQ</span>
+          </div>
+          <div class="how-card">
+            <span class="how-num">۲</span>
+            <h3>بازدید</h3>
+            <p>بازدید بر اساس زیرمجموعه: موتور، چرخ و…</p>
+            <span class="tracking">INSP</span>
+          </div>
+          <div class="how-card">
+            <span class="how-num">۳</span>
+            <h3>ارزیابی و خرابی</h3>
+            <p>ارزیابی ثبت می‌شود؛ اگر خرابی هست، با شرح کوتاه ثبت می‌شود.</p>
+            <span class="tracking">EV · FLT</span>
+          </div>
+          <div class="how-card">
+            <span class="how-num">۴</span>
+            <h3>درخواست و حکم کار</h3>
+            <p>درخواست با تایید تو ثبت می‌شود؛ حکم کار با تعمیرگاه و قطعات.</p>
+            <span class="tracking">REQ · WO</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ویژگی‌ها -->
+      <section class="home-section">
+        <h2>چرا این سامانه؟</h2>
+        <div class="features-grid">
+          <div class="feature-card">
+            <span class="feature-icon">⚙️</span>
+            <h3>Workflow صریح</h3>
+            <p>ترتیب قدم‌ها در کد مشخص است؛ هر قدم، قدم قبلی را چک می‌کند.</p>
+          </div>
+          <div class="feature-card">
+            <span class="feature-icon">🧠</span>
+            <h3>مدیریت توکن و Compaction</h3>
+            <p>مکالمه هیچ‌وقت از حد توکن نمی‌گذرد؛ پیام‌های قدیمی خلاصه می‌شوند.</p>
+          </div>
+          <div class="feature-card">
+            <span class="feature-icon">📊</span>
+            <h3>Eval با LangSmith</h3>
+            <p>سوال‌های تست، امتیازدهی و ثبت نتیجه در LangSmith.</p>
+          </div>
+          <div class="feature-card">
+            <span class="feature-icon">💬</span>
+            <h3>چت‌بات محور</h3>
+            <p>همه ثبت‌ها با چت انجام می‌شود؛ بدون فرم ورودی.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- سوالات متداول -->
+      <section class="home-section">
+        <h2>سوالات متداول</h2>
+        <div class="faq">
+          <details>
+            <summary>چطور یک خودرو ثبت کنم؟</summary>
+            <p>در تب چت‌بات بنویس «یک خودروی … با پلاک … ثبت کن»؛ یا از گاراژ دکمه «اضافه کردن تجهیز» را بزن تا پیام آماده در چت برایت باز شود.</p>
+          </details>
+          <details>
+            <summary>چرا بعضی ثبت‌ها انجام نمی‌شود؟</summary>
+            <p>ترتیب workflow باید رعایت شود؛ مثلا حکم کار بدون تایید درخواست ثبت نمی‌شود. چت‌بات خودش می‌گوید کدام مرحله جا مانده است.</p>
+          </details>
+          <details>
+            <summary>رکوردها کجا ذخیره می‌شوند؟</summary>
+            <p>فعلا در حافظه؛ با خاموش شدن بک‌اند پاک می‌شوند. دیتابیس بعدا اضافه می‌شود.</p>
+          </details>
+          <details>
+            <summary>چرا تصویر خودرو برای همه یکی است؟</summary>
+            <p>فعلا یک تصویر ثابت نمایش داده می‌شود؛ مدل سه‌بعدی واقعی بعدا می‌آید.</p>
+          </details>
+        </div>
+      </section>
+    }
+
+    <!-- نمای گاراژ — لیست تجهیزها + تصویر ثابت خودرو -->
+    @if (view() === 'garage') {
+      <section class="garage-showcase">
+        <img class="garage-img" src="/dena-plus.jpg" alt="دنا پلاس" />
+        <div class="garage-showcase-overlay"></div>
+        <div class="garage-showcase-text">
+          <h1>گاراژ من</h1>
+          <p>{{ vehicles().length }} تجهیز ثبت شده — روی هر خودرو کلیک کن تا سوابقش را ببینی</p>
+        </div>
+        <button class="btn-primary garage-add" (click)="addEquipment()">＋ اضافه کردن تجهیز</button>
+      </section>
+
+      @if (garageLoading()) {
+        <p class="muted">در حال بارگذاری…</p>
+      } @else if (garageError()) {
+        <p class="error">{{ garageError() }}</p>
+      } @else if (vehicles().length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon">🚗</div>
+          <p class="empty-title">گاراژ هنوز خالی است</p>
+          <p>اولین خودرو را با چت‌بات ثبت کن.</p>
+          <button class="btn-primary" (click)="addEquipment()">ثبت اولین تجهیز</button>
+        </div>
+      } @else {
+        <div class="vehicle-grid">
+          @for (v of vehicles(); track v['tracking']) {
+            <button class="vehicle-card" (click)="openVehicle(v)">
+              <span class="vehicle-plate">{{ v['plate'] }}</span>
+              <span class="vehicle-name">{{ v['name'] }}@if (v['kind']) { · {{ v['kind'] }} }</span>
+              <span class="vehicle-meta">
+                <span class="tracking">{{ v['tracking'] }}</span>
+                <span class="stage-badge">{{ stageForPlate(v['plate'] + '').name }}</span>
+              </span>
+            </button>
+          }
+        </div>
+      }
+
+      <!-- دسترسی سریع به گریدها و نمودار ماژول‌ها -->
+      <div class="garage-links">
+        <button (click)="openModules()">نمودار ماژول‌ها</button>
+        <button (click)="openGrid('equipment')">گرید تجهیزها</button>
+        <button (click)="openGrid('inspections')">گرید بازدیدها</button>
+        <button (click)="openGrid('requests')">گرید درخواست‌ها</button>
+        <button (click)="openGrid('work_orders')">گرید حکم کارها</button>
+      </div>
+    }
+
     <!-- نمای چت -->
     @if (view() === 'chat') {
       <section class="card chat-card">
@@ -214,6 +363,40 @@
     }
   </main>
 
+  <!-- مودال خودرو (گاراژ) — فقط نمایش سوابق + دکمه‌هایی که به چت‌بات می‌روند؛ هیچ فرمی نیست -->
+  @if (selectedVehicle()) {
+    <div class="modal-overlay" (click)="closeVehicle()">
+      <div class="modal vehicle-modal" (click)="$event.stopPropagation()">
+        <div class="detail-head">
+          <h2>{{ selectedVehicle()!['name'] }} — {{ selectedVehicle()!['plate'] }}</h2>
+          <button class="close" (click)="closeVehicle()">✕</button>
+        </div>
+        <p class="modal-sub">شماره رهگیری {{ selectedVehicle()!['tracking'] }} · مرحله فعلی: {{ stageForPlate(selectedVehicle()!['plate'] + '').name }}</p>
+        @for (group of vehicleGroups(); track group.key) {
+          <div class="record-group">
+            <h3>{{ group.label }} ({{ group.items.length }})</h3>
+            @if (group.items.length === 0) {
+              <p class="muted small">هنوز ثبت نشده است.</p>
+            } @else {
+              @for (item of group.items; track item.tracking) {
+                <div class="record-row">
+                  <span class="tracking">{{ item.tracking }}</span>
+                  <span class="record-line">{{ item.line }}</span>
+                </div>
+              }
+            }
+          </div>
+        }
+        <div class="modal-actions">
+          <button class="btn-confirm" (click)="registerInspectionFor(selectedVehicle()!['plate'] + '')">ثبت بازدید</button>
+          <button class="btn-confirm" (click)="registerEvaluationFor(selectedVehicle()!['plate'] + '')">ثبت ارزیابی</button>
+          <button class="btn-confirm" (click)="registerFaultFor(selectedVehicle()!['plate'] + '')">ثبت خرابی</button>
+        </div>
+        <p class="hint">ثبت‌ها با چت انجام می‌شود؛ این دکمه‌ها تو را به چت‌بات می‌برند با پیام آماده.</p>
+      </div>
+    </div>
+  }
+
   <!-- مودال تایید درخواست تعمیراتی — قبل از ثبت، تجهیز و خرابی را نشان می‌دهد -->
   @if (pendingConfirmation()) {
     <div class="modal-overlay">
@@ -274,16 +457,16 @@
     <div class="gear-3d-scene">
       <!-- لایه عقب: چرخ‌دنده تیره (عمق سه‌بعدی) -->
       <div class="gear-3d-layer gear-back">
-        <svg viewBox="0 0 100 100"><path fill="#0d3b2c" fill-rule="evenodd" d="M83.8 37.7 L85.1 41.9 L95.6 43.6 L95.6 56.4 L85.1 58.1 L83.8 62.3 L82.6 65.2 L80.5 69.1 L86.7 77.7 L77.7 86.7 L69.1 80.5 L65.2 82.6 L62.3 83.8 L58.1 85.1 L56.4 95.6 L43.6 95.6 L41.9 85.1 L37.7 83.8 L34.8 82.6 L30.9 80.5 L22.3 86.7 L13.3 77.7 L19.5 69.1 L17.4 65.2 L16.2 62.3 L14.9 58.1 L4.4 56.4 L4.4 43.6 L14.9 41.9 L16.2 37.7 L17.4 34.8 L19.5 30.9 L13.3 22.3 L22.3 13.3 L30.9 19.5 L34.8 17.4 L37.7 16.2 L41.9 14.9 L43.6 4.4 L56.4 4.4 L58.1 14.9 L62.3 16.2 L65.2 17.4 L69.1 19.5 L77.7 13.3 L86.7 22.3 L80.5 30.9 L82.6 34.8 Z M35 50 A15 15 0 1 0 65 50 A15 15 0 1 0 35 50 Z"/></svg>
+        <svg viewBox="0 0 100 100"><path fill="#2a0d0b" fill-rule="evenodd" d="M83.8 37.7 L85.1 41.9 L95.6 43.6 L95.6 56.4 L85.1 58.1 L83.8 62.3 L82.6 65.2 L80.5 69.1 L86.7 77.7 L77.7 86.7 L69.1 80.5 L65.2 82.6 L62.3 83.8 L58.1 85.1 L56.4 95.6 L43.6 95.6 L41.9 85.1 L37.7 83.8 L34.8 82.6 L30.9 80.5 L22.3 86.7 L13.3 77.7 L19.5 69.1 L17.4 65.2 L16.2 62.3 L14.9 58.1 L4.4 56.4 L4.4 43.6 L14.9 41.9 L16.2 37.7 L17.4 34.8 L19.5 30.9 L13.3 22.3 L22.3 13.3 L30.9 19.5 L34.8 17.4 L37.7 16.2 L41.9 14.9 L43.6 4.4 L56.4 4.4 L58.1 14.9 L62.3 16.2 L65.2 17.4 L69.1 19.5 L77.7 13.3 L86.7 22.3 L80.5 30.9 L82.6 34.8 Z M35 50 A15 15 0 1 0 65 50 A15 15 0 1 0 35 50 Z"/></svg>
       </div>
-      <!-- لایه میانی: چرخ‌دنده اصلی با گرادیان نعنایی -->
+      <!-- لایه میانی: چرخ‌دنده اصلی با گرادیان قرمز -->
       <div class="gear-3d-layer gear-mid">
         <svg viewBox="0 0 100 100">
           <defs>
             <linearGradient id="gearGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#70e0c2"/>
-              <stop offset=".55" stop-color="#04a36f"/>
-              <stop offset="1" stop-color="#285748"/>
+              <stop offset="0" stop-color="#ff6b5e"/>
+              <stop offset=".55" stop-color="#e10600"/>
+              <stop offset="1" stop-color="#5c0a06"/>
             </linearGradient>
           </defs>
           <path fill="url(#gearGrad)" fill-rule="evenodd" d="M83.8 37.7 L85.1 41.9 L95.6 43.6 L95.6 56.4 L85.1 58.1 L83.8 62.3 L82.6 65.2 L80.5 69.1 L86.7 77.7 L77.7 86.7 L69.1 80.5 L65.2 82.6 L62.3 83.8 L58.1 85.1 L56.4 95.6 L43.6 95.6 L41.9 85.1 L37.7 83.8 L34.8 82.6 L30.9 80.5 L22.3 86.7 L13.3 77.7 L19.5 69.1 L17.4 65.2 L16.2 62.3 L14.9 58.1 L4.4 56.4 L4.4 43.6 L14.9 41.9 L16.2 37.7 L17.4 34.8 L19.5 30.9 L13.3 22.3 L22.3 13.3 L30.9 19.5 L34.8 17.4 L37.7 16.2 L41.9 14.9 L43.6 4.4 L56.4 4.4 L58.1 14.9 L62.3 16.2 L65.2 17.4 L69.1 19.5 L77.7 13.3 L86.7 22.3 L80.5 30.9 L82.6 34.8 Z M35 50 A15 15 0 1 0 65 50 A15 15 0 1 0 35 50 Z"/>
@@ -294,8 +477,8 @@
         <svg viewBox="0 0 100 100">
           <defs>
             <linearGradient id="wrenchGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#c9f7e8"/>
-              <stop offset="1" stop-color="#70e0c2"/>
+              <stop offset="0" stop-color="#ffd9d6"/>
+              <stop offset="1" stop-color="#ff8a7a"/>
             </linearGradient>
           </defs>
           <g transform="translate(26 26) scale(2)">

@@ -1,14 +1,14 @@
-/* استایل کلی — تم تیره سبز (الگو: شات SmartChat در Dribbble) */
+/* استایل کلی — تم گاراژ سینمایی تیره (الگو: طراحی 3DTUNNERS) */
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background-color: #010504;
-  /* درخشش‌های ملایم: زمردی بالا-چپ، آبی-سبز بالا-راست، سبز جنگلی پایین؛ بقیه تیره ساده */
+  background-color: #0a0a0c;
+  /* درخشش‌های ملایم قرمز: بالا-چپ و بالا-راست، بقیه تیره ساده */
   background-image:
-    radial-gradient(640px 420px at 12% -6%, rgba(4, 163, 111, 0.28), transparent 65%),
-    radial-gradient(560px 380px at 92% -4%, rgba(98, 159, 176, 0.22), transparent 65%),
-    radial-gradient(520px 480px at 50% 115%, rgba(40, 87, 72, 0.22), transparent 70%);
+    radial-gradient(640px 420px at 12% -6%, rgba(225, 6, 0, 0.22), transparent 65%),
+    radial-gradient(560px 380px at 92% -4%, rgba(255, 42, 31, 0.12), transparent 65%),
+    radial-gradient(520px 480px at 50% 115%, rgba(225, 6, 0, 0.1), transparent 70%);
   background-attachment: fixed;
-  color: #e9f4ef;
+  color: #f5f5f7;
   font-family: Tahoma, sans-serif;
 }
