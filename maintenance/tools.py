@@ -5,9 +5,11 @@
 مدل وقتی لازم بداند، خودش این ابزارها را صدا می‌زند.
 """
 import json
-from . import config, store, workflow
+from . import config, reports, store, workflow
 
 # معرفی ابزارها به مدل، با فرمت OpenAI function calling
+# extra (در ابزارهای ثبت): دیتای اضافی که کاربر گفته ولی فیلد ندارد؛
+# دیکشنری تخت رشته→رشته، مثلا {"رنگ": "سفید"}
 TOOLS = [
     {
         "type": "function",
@@ -20,6 +22,7 @@ TOOLS = [
                     "plate": {"type": "string", "description": "شماره پلاک، مثلا '12ب345 ایران 67'"},
                     "name": {"type": "string", "description": "نام خودرو، مثلا 'پراید'"},
                     "kind": {"type": "string", "description": "نوع تجهیز، مثلا 'سواری'"},
+                    "extra": {"type": "object", "description": "دیتای اضافی بدون فیلد، مثلا {'رنگ': 'سفید'}"},
                 },
                 "required": ["plate", "name"],
             },
@@ -50,6 +53,7 @@ TOOLS = [
                     "plate": {"type": "string", "description": "شماره پلاک خودرو"},
                     "subsystem": {"type": "string", "description": "زیرمجموعه، مثلا 'موتور' یا 'چرخ'"},
                     "note": {"type": "string", "description": "توضیح بازدید"},
+                    "extra": {"type": "object", "description": "دیتای اضافی بدون فیلد، مثلا {'سطح روغن': 'کم'}"},
                 },
                 "required": ["plate", "subsystem"],
             },
@@ -66,6 +70,7 @@ TOOLS = [
                     "plate": {"type": "string", "description": "شماره پلاک خودرو"},
                     "inspection_id": {"type": "string", "description": "شماره رهگیری بازدید، مثلا 'INSP-001'"},
                     "summary": {"type": "string", "description": "خلاصه ارزیابی"},
+                    "extra": {"type": "object", "description": "دیتای اضافی بدون فیلد"},
                 },
                 "required": ["plate", "inspection_id", "summary"],
             },
@@ -82,6 +87,7 @@ TOOLS = [
                     "evaluation_id": {"type": "string", "description": "شماره رهگیری ارزیابی، مثلا 'EV-001'"},
                     "description": {"type": "string", "description": "شرح کوتاه خرابی، همان‌طور که کاربر گفت"},
                     "subsystem": {"type": "string", "description": "زیرمجموعه، مثلا 'موتور' — اختیاری است؛ اگر کاربر نگفت خالی بگذار"},
+                    "extra": {"type": "object", "description": "دیتای اضافی بدون فیلد"},
                 },
                 "required": ["evaluation_id", "description"],
             },
@@ -98,6 +104,7 @@ TOOLS = [
                     "evaluation_id": {"type": "string", "description": "شماره رهگیری ارزیابی، مثلا 'EV-001'"},
                     "fault_id": {"type": "string", "description": "شماره رهگیری خرابی، مثلا 'FLT-001'"},
                     "description": {"type": "string", "description": "شرح درخواست"},
+                    "extra": {"type": "object", "description": "دیتای اضافی بدون فیلد"},
                 },
                 "required": ["evaluation_id"],
             },
@@ -128,6 +135,7 @@ TOOLS = [
                     "request_id": {"type": "string", "description": "شماره رهگیری درخواست تاییدشده، مثلا 'REQ-001'"},
                     "shop": {"type": "string", "description": "نام تعمیرگاه"},
                     "parts": {"type": "string", "description": "قطعات مورد نیاز"},
+                    "extra": {"type": "object", "description": "دیتای اضافی بدون فیلد"},
                 },
                 "required": ["request_id", "shop", "parts"],
             },
@@ -178,6 +186,21 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "run_report",
+            "description": "گزارش یا آمار از دیتابیس بگیر. اول یک گزارش آماده را با report انتخاب کن؛ فقط وقتی هیچ گزارش آماده‌ای جواب نمی‌دهد، با sql یک کوئری SELECT بنویس (فقط خواندنی).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "report": {"type": "string", "description": "نام گزارش آماده: pending_approvals ،faults_by_vehicle ،faults_by_subsystem ،work_orders_by_shop ،vehicle_history"},
+                    "plate": {"type": "string", "description": "پلاک خودرو (برای vehicle_history لازم است، برای faults_by_vehicle اختیاری است)"},
+                    "sql": {"type": "string", "description": "کوئری SQL آزاد، فقط SELECT — وقتی هیچ گزارش آماده‌ای جواب نمی‌دهد"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "search_articles",
             "description": "در وب مقاله پیدا کن. وقتی کاربر درباره یک قطعه یا جزء خودرو سوال دارد از این استفاده کن.",
             "parameters": {
@@ -219,29 +242,29 @@ def _matches(record: dict, query: str, fields: list[str]) -> bool:
 
 
 # --- ابزارهای ثبت: فقط پیام workflow را برمی‌گردانند ---
-def register_equipment(plate: str, name: str, kind: str = "") -> str:
+def register_equipment(plate: str, name: str, kind: str = "", extra: dict | None = None) -> str:
     """قدم 1 workflow: تجهیز را با پلاک ثبت کن."""
-    return workflow.register_equipment_step(plate, name, kind)["message"]
+    return workflow.register_equipment_step(plate, name, kind, extra=extra)["message"]
 
 
-def register_inspection(plate: str, subsystem: str, note: str = "") -> str:
+def register_inspection(plate: str, subsystem: str, note: str = "", extra: dict | None = None) -> str:
     """قدم 2 workflow: بازدید ثبت کن."""
-    return workflow.register_inspection_step(plate, subsystem, note)["message"]
+    return workflow.register_inspection_step(plate, subsystem, note, extra=extra)["message"]
 
 
-def register_evaluation(plate: str, inspection_id: str, summary: str) -> str:
+def register_evaluation(plate: str, inspection_id: str, summary: str, extra: dict | None = None) -> str:
     """قدم 3 workflow: ارزیابی ثبت کن."""
-    return workflow.register_evaluation_step(plate, inspection_id, summary)["message"]
+    return workflow.register_evaluation_step(plate, inspection_id, summary, extra=extra)["message"]
 
 
-def register_fault(evaluation_id: str, description: str, subsystem: str = "") -> str:
+def register_fault(evaluation_id: str, description: str, subsystem: str = "", extra: dict | None = None) -> str:
     """قدم 4 workflow: خرابی ثبت کن. شرح کوتاه کافی است؛ علت نمی‌پرسیم."""
-    return workflow.register_fault_step(evaluation_id, description, subsystem)["message"]
+    return workflow.register_fault_step(evaluation_id, description, subsystem, extra=extra)["message"]
 
 
-def register_repair_request(evaluation_id: str, fault_id: str = "", description: str = "") -> str:
+def register_repair_request(evaluation_id: str, fault_id: str = "", description: str = "", extra: dict | None = None) -> str:
     """قدم 5 workflow: درخواست تعمیراتی آماده کن (ثبت واقعی بعد از تایید کاربر)."""
-    return workflow.register_repair_request_step(evaluation_id, fault_id, description)["message"]
+    return workflow.register_repair_request_step(evaluation_id, fault_id, description, extra=extra)["message"]
 
 
 def approve_request(request_id: str) -> str:
@@ -249,9 +272,27 @@ def approve_request(request_id: str) -> str:
     return workflow.approve_request_step(request_id)["message"]
 
 
-def register_work_order(request_id: str, shop: str, parts: str) -> str:
+def register_work_order(request_id: str, shop: str, parts: str, extra: dict | None = None) -> str:
     """قدم 7 workflow: حکم کار ثبت کن."""
-    return workflow.register_work_order_step(request_id, shop, parts)["message"]
+    return workflow.register_work_order_step(request_id, shop, parts, extra=extra)["message"]
+
+
+# --- ابزار گزارش‌گیری ---
+def run_report(report: str = "", plate: str = "", sql: str = "") -> str:
+    """گزارش از دیتابیس بگیر: یا یک گزارش آماده، یا یک کوئری SELECT آزاد.
+
+    اگر report داده شد، همان گزارش آماده اجرا می‌شود (plate برای
+    گزارش‌های خودرویی). اگر sql داده شد، کوئری آزاد با گاردریل
+    اجرا می‌شود. SQL فقط در reports.py زندگی می‌کند، نه اینجا.
+    """
+    if sql:
+        return reports.format_result(reports.run_sql(sql))
+    if report:
+        return reports.format_result(
+            reports.run_report(report, {"plate": plate} if plate else {})
+        )
+    names = "، ".join(reports.REPORTS)
+    return f"نام گزارش یا کوئری را بده. گزارش‌های آماده: {names}"
 
 
 # --- ابزارهای جستجو در حافظه ---
@@ -349,21 +390,23 @@ def run_tool(name: str, arguments: str) -> str:
     """ابزار را با آرگومان‌های مدل اجرا کن."""
     args = json.loads(arguments or "{}")
     if name == "register_equipment":
-        return register_equipment(args.get("plate", ""), args.get("name", ""), args.get("kind", ""))
+        return register_equipment(args.get("plate", ""), args.get("name", ""), args.get("kind", ""), args.get("extra"))
     if name == "search_vehicle":
         return search_vehicle(args.get("query", ""))
     if name == "register_inspection":
-        return register_inspection(args.get("plate", ""), args.get("subsystem", ""), args.get("note", ""))
+        return register_inspection(args.get("plate", ""), args.get("subsystem", ""), args.get("note", ""), args.get("extra"))
     if name == "register_evaluation":
-        return register_evaluation(args.get("plate", ""), args.get("inspection_id", ""), args.get("summary", ""))
+        return register_evaluation(args.get("plate", ""), args.get("inspection_id", ""), args.get("summary", ""), args.get("extra"))
     if name == "register_fault":
-        return register_fault(args.get("evaluation_id", ""), args.get("description", ""), args.get("subsystem", ""))
+        return register_fault(args.get("evaluation_id", ""), args.get("description", ""), args.get("subsystem", ""), args.get("extra"))
     if name == "register_repair_request":
-        return register_repair_request(args.get("evaluation_id", ""), args.get("fault_id", ""), args.get("description", ""))
+        return register_repair_request(args.get("evaluation_id", ""), args.get("fault_id", ""), args.get("description", ""), args.get("extra"))
     if name == "approve_request":
         return approve_request(args.get("request_id", ""))
     if name == "register_work_order":
-        return register_work_order(args.get("request_id", ""), args.get("shop", ""), args.get("parts", ""))
+        return register_work_order(args.get("request_id", ""), args.get("shop", ""), args.get("parts", ""), args.get("extra"))
+    if name == "run_report":
+        return run_report(report=args.get("report", ""), plate=args.get("plate", ""), sql=args.get("sql", ""))
     if name == "search_repair_request":
         return search_repair_request(args.get("query", ""))
     if name == "search_evaluation":

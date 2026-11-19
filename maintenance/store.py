@@ -78,18 +78,55 @@ def next_tracking(prefix: str) -> str:
 
 
 def reset() -> None:
-    """همه رکوردها و شمارنده‌ها را پاک کن (برای تست). جدول‌ها می‌مانند."""
+    """همه رکوردها و شمارنده‌ها را پاک کن (برای تست). جدول‌ها می‌مانند.
+
+    ترتیب حذف مهم است: اول جدول‌هایی که به بقیه اشاره می‌کنند
+    (چون کلید خارجی روشن است، نمی‌شود اول جدول «پدر» را پاک کرد).
+    """
     with db.lock:
         with db.connect() as conn:
-            for table, _ in _PREFIX_TABLES.values():
+            for table in (
+                "pending_confirmations",
+                "work_orders",
+                "repair_requests",
+                "faults",
+                "evaluations",
+                "inspections",
+                "equipment",
+            ):
                 conn.execute(f"DELETE FROM {table}")
         _counters.clear()
 
 
+# --- دیتای اضافی (extra): دیکشنری تخت رشته→رشته، به‌صورت JSON ---
+def _dump_extra(extra: dict | None) -> str:
+    """دیکشنری extra را به متن JSON تبدیل کن؛ اگر نبود '{}' برگردان."""
+    if not isinstance(extra, dict) or not extra:
+        return "{}"
+    flat = {str(key): str(value) for key, value in extra.items()}
+    return json.dumps(flat, ensure_ascii=False)
+
+
+def _load_extra(raw) -> dict:
+    """متن JSON ستون extra_data را به دیکشنری برگردان؛ اگر خراب بود {}."""
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 # --- تبدیل ردیف دیتابیس به دیکشنری رکورد ---
 def _record(row) -> dict:
-    """یک ردیف دیتابیس را به دیکشنری رکورد تبدیل کن."""
-    return dict(row)
+    """یک ردیف دیتابیس را به دیکشنری رکورد تبدیل کن.
+
+    ستون extra_data (متن JSON) به کلید "extra" (دیکشنری) تبدیل می‌شود.
+    """
+    record = dict(row)
+    record["extra"] = _load_extra(record.pop("extra_data", None))
+    return record
 
 
 def _pending_record(row) -> dict:
@@ -97,29 +134,37 @@ def _pending_record(row) -> dict:
 
     گزارش بازدید (inspection) در دیتابیس به‌صورت متن JSON نگه داشته می‌شود؛
     موقع خواندن دوباره دیکشنری‌اش می‌کنیم (یا None اگر نبود).
+    دیتای اضافی (extra) هم مثل بقیه رکوردها از ستون extra_data می‌آید.
     """
     record = dict(row)
     raw = record.pop("inspection_json", None)
     record["inspection"] = json.loads(raw) if raw else None
+    record["extra"] = _load_extra(record.pop("extra_data", None))
     return record
 
 
 # --- تجهیز (خودرو) ---
-def add_vehicle(plate: str, name: str, kind: str = "") -> dict:
-    """یک تجهیز/خودرو با شماره پلاک ثبت کن."""
+def add_vehicle(plate: str, name: str, kind: str = "", extra: dict | None = None) -> dict:
+    """یک تجهیز/خودرو با شماره پلاک ثبت کن.
+
+    extra: دیتای اضافی که کاربر گفته ولی فیلد ندارد،
+    مثلا {"رنگ": "سفید"} — به‌صورت JSON ذخیره می‌شود.
+    """
     with db.lock:
         record = {
             "tracking": next_tracking("EQ"),
             "plate": plate.strip(),
             "name": name,
             "kind": kind,
+            "extra": _load_extra(_dump_extra(extra)),
         }
         with db.connect() as conn:
             # اگر همین پلاک قبلاً بود، رکوردش جایگزین می‌شود (مثل قبل).
             conn.execute(
-                "INSERT OR REPLACE INTO equipment (tracking, plate, name, kind)"
-                " VALUES (?, ?, ?, ?)",
-                (record["tracking"], record["plate"], record["name"], record["kind"]),
+                "INSERT OR REPLACE INTO equipment (tracking, plate, name, kind, extra_data)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (record["tracking"], record["plate"], record["name"], record["kind"],
+                 _dump_extra(extra)),
             )
         return record
 
@@ -141,7 +186,7 @@ def list_vehicles() -> list[dict]:
 
 
 # --- بازدید ---
-def add_inspection(plate: str, subsystem: str, note: str = "") -> dict:
+def add_inspection(plate: str, subsystem: str, note: str = "", extra: dict | None = None) -> dict:
     """یک بازدید برای یک خودرو ثبت کن."""
     with db.lock:
         record = {
@@ -149,12 +194,14 @@ def add_inspection(plate: str, subsystem: str, note: str = "") -> dict:
             "plate": plate.strip(),
             "subsystem": subsystem,
             "note": note,
+            "extra": _load_extra(_dump_extra(extra)),
         }
         with db.connect() as conn:
             conn.execute(
-                "INSERT INTO inspections (tracking, plate, subsystem, note)"
-                " VALUES (?, ?, ?, ?)",
-                (record["tracking"], record["plate"], record["subsystem"], record["note"]),
+                "INSERT INTO inspections (tracking, plate, subsystem, note, extra_data)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (record["tracking"], record["plate"], record["subsystem"], record["note"],
+                 _dump_extra(extra)),
             )
         return record
 
@@ -174,7 +221,7 @@ def list_inspections() -> list[dict]:
 
 
 # --- ارزیابی (می‌تواند بدون خرابی باشد) ---
-def add_evaluation(plate: str, inspection_id: str, summary: str) -> dict:
+def add_evaluation(plate: str, inspection_id: str, summary: str, extra: dict | None = None) -> dict:
     """یک ارزیابی برای یک بازدید ثبت کن."""
     with db.lock:
         record = {
@@ -182,12 +229,14 @@ def add_evaluation(plate: str, inspection_id: str, summary: str) -> dict:
             "plate": plate.strip(),
             "inspection_id": inspection_id.strip().upper(),
             "summary": summary,
+            "extra": _load_extra(_dump_extra(extra)),
         }
         with db.connect() as conn:
             conn.execute(
-                "INSERT INTO evaluations (tracking, plate, inspection_id, summary)"
-                " VALUES (?, ?, ?, ?)",
-                (record["tracking"], record["plate"], record["inspection_id"], record["summary"]),
+                "INSERT INTO evaluations (tracking, plate, inspection_id, summary, extra_data)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (record["tracking"], record["plate"], record["inspection_id"], record["summary"],
+                 _dump_extra(extra)),
             )
         return record
 
@@ -207,7 +256,7 @@ def list_evaluations() -> list[dict]:
 
 
 # --- خرابی (قدم جدا، وصل به یک ارزیابی) ---
-def add_fault(evaluation_id: str, description: str, subsystem: str = "") -> dict:
+def add_fault(evaluation_id: str, description: str, subsystem: str = "", extra: dict | None = None) -> dict:
     """یک خرابی برای یک ارزیابی ثبت کن."""
     with db.lock:
         evaluation = get_evaluation(evaluation_id)
@@ -217,13 +266,14 @@ def add_fault(evaluation_id: str, description: str, subsystem: str = "") -> dict
             "plate": evaluation["plate"] if evaluation else "",
             "description": description,
             "subsystem": subsystem,
+            "extra": _load_extra(_dump_extra(extra)),
         }
         with db.connect() as conn:
             conn.execute(
-                "INSERT INTO faults (tracking, evaluation_id, plate, description, subsystem)"
-                " VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO faults (tracking, evaluation_id, plate, description, subsystem, extra_data)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
                 (record["tracking"], record["evaluation_id"], record["plate"],
-                 record["description"], record["subsystem"]),
+                 record["description"], record["subsystem"], _dump_extra(extra)),
             )
         return record
 
@@ -253,7 +303,7 @@ def faults_for_evaluation(evaluation_id: str) -> list[dict]:
 
 
 # --- درخواست تعمیراتی ---
-def add_repair_request(evaluation_id: str, fault_id: str, description: str) -> dict:
+def add_repair_request(evaluation_id: str, fault_id: str, description: str, extra: dict | None = None) -> dict:
     """یک درخواست تعمیراتی ثبت کن؛ وضعیت اول: در انتظار تایید."""
     with db.lock:
         evaluation = get_evaluation(evaluation_id)
@@ -264,14 +314,15 @@ def add_repair_request(evaluation_id: str, fault_id: str, description: str) -> d
             "plate": evaluation["plate"] if evaluation else "",
             "description": description,
             "status": "در انتظار تایید",
+            "extra": _load_extra(_dump_extra(extra)),
         }
         with db.connect() as conn:
             conn.execute(
                 "INSERT INTO repair_requests"
-                " (tracking, evaluation_id, fault_id, plate, description, status)"
-                " VALUES (?, ?, ?, ?, ?, ?)",
+                " (tracking, evaluation_id, fault_id, plate, description, status, extra_data)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (record["tracking"], record["evaluation_id"], record["fault_id"],
-                 record["plate"], record["description"], record["status"]),
+                 record["plate"], record["description"], record["status"], _dump_extra(extra)),
             )
         return record
 
@@ -309,11 +360,13 @@ def approve_request(tracking: str) -> dict | None:
 def add_pending_confirmation(plate: str, equipment_name: str, evaluation_id: str,
                              fault_id: str, fault_description: str,
                              description: str = "",
-                             inspection: dict | None = None) -> dict:
+                             inspection: dict | None = None,
+                             extra: dict | None = None) -> dict:
     """یک درخواست تعمیراتی آماده کن که هنوز ثبت نشده و منتظر تایید کاربر است.
 
     inspection: گزارش بازدیدی که ارزیابی روی آن ثبت شده، برای نمایش
     در پنجره تایید (شماره رهگیری، زیرمجموعه، توضیح)؛ اگر نبود None است.
+    extra: دیتای اضافی درخواست؛ موقع تایید، همراه درخواست ثبت می‌شود.
     """
     with db.lock:
         record = {
@@ -325,17 +378,19 @@ def add_pending_confirmation(plate: str, equipment_name: str, evaluation_id: str
             "fault": fault_description,
             "description": description,
             "inspection": inspection,
+            "extra": _load_extra(_dump_extra(extra)),
         }
         with db.connect() as conn:
             conn.execute(
                 "INSERT INTO pending_confirmations"
                 " (confirmation_id, plate, equipment, evaluation_id, fault_id,"
-                " fault, description, inspection_json)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                " fault, description, inspection_json, extra_data)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (record["confirmation_id"], record["plate"], record["equipment"],
                  record["evaluation_id"], record["fault_id"], record["fault"],
                  record["description"],
-                 json.dumps(inspection, ensure_ascii=False) if inspection else None),
+                 json.dumps(inspection, ensure_ascii=False) if inspection else None,
+                 _dump_extra(extra)),
             )
         return record
 
@@ -374,7 +429,7 @@ def remove_pending_confirmation(confirmation_id: str) -> dict | None:
 
 
 # --- حکم کار ---
-def add_work_order(request_id: str, shop: str, parts: str) -> dict:
+def add_work_order(request_id: str, shop: str, parts: str, extra: dict | None = None) -> dict:
     """یک حکم کار برای یک درخواست تاییدشده ثبت کن."""
     with db.lock:
         request = get_request(request_id)
@@ -385,13 +440,14 @@ def add_work_order(request_id: str, shop: str, parts: str) -> dict:
             "shop": shop,
             "parts": parts,
             "status": "ثبت شده",
+            "extra": _load_extra(_dump_extra(extra)),
         }
         with db.connect() as conn:
             conn.execute(
-                "INSERT INTO work_orders (tracking, request_id, plate, shop, parts, status)"
-                " VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO work_orders (tracking, request_id, plate, shop, parts, status, extra_data)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (record["tracking"], record["request_id"], record["plate"],
-                 record["shop"], record["parts"], record["status"]),
+                 record["shop"], record["parts"], record["status"], _dump_extra(extra)),
             )
         return record
 

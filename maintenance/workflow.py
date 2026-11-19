@@ -82,63 +82,64 @@ def current_stage(plate: str) -> dict:
             "next_step": "روال کامل شد؛ حکم کار ثبت شده است."}
 
 
-def register_equipment_step(plate: str, name: str, kind: str = "") -> dict:
+def register_equipment_step(plate: str, name: str, kind: str = "", extra: dict | None = None) -> dict:
     """قدم 1: تجهیز را با پلاک ثبت کن."""
     existing = store.get_vehicle(plate)
     if existing is not None:
         return {"ok": True, "tracking": existing["tracking"],
                 "message": f"این خودرو قبلاً ثبت شده است. شماره رهگیری: {existing['tracking']}\n"
                            "مرحله بعدی: ثبت بازدید"}
-    record = store.add_vehicle(plate, name, kind)
+    record = store.add_vehicle(plate, name, kind, extra=extra)
     return {"ok": True, "tracking": record["tracking"],
             "message": f"تجهیز ثبت شد. شماره رهگیری: {record['tracking']}\n"
                        "مرحله بعدی: ثبت بازدید"}
 
 
-def register_inspection_step(plate: str, subsystem: str, note: str = "") -> dict:
+def register_inspection_step(plate: str, subsystem: str, note: str = "", extra: dict | None = None) -> dict:
     """قدم 2: بازدید ثبت کن؛ اول باید تجهیز ثبت شده باشد."""
     if store.get_vehicle(plate) is None:
         return {"ok": False, "tracking": None,
                 "message": "نمی‌توانم بازدید ثبت کنم؛ مرحله «ثبت تجهیز» هنوز انجام نشده است. "
                            "اول خودرو را با شماره پلاک ثبت کن."}
-    record = store.add_inspection(plate, subsystem, note)
+    record = store.add_inspection(plate, subsystem, note, extra=extra)
     return {"ok": True, "tracking": record["tracking"],
             "message": f"بازدید ثبت شد. شماره رهگیری: {record['tracking']}\n"
                        "مرحله بعدی: ثبت ارزیابی"}
 
 
-def register_evaluation_step(plate: str, inspection_id: str, summary: str) -> dict:
+def register_evaluation_step(plate: str, inspection_id: str, summary: str, extra: dict | None = None) -> dict:
     """قدم 3: ارزیابی ثبت کن؛ اول باید بازدید ثبت شده باشد."""
     inspection = store.get_inspection(inspection_id)
     if inspection is None:
         return {"ok": False, "tracking": None,
                 "message": "نمی‌توانم ارزیابی ثبت کنم؛ مرحله «ثبت بازدید» هنوز انجام نشده است. "
                            f"بازدیدی با شماره {inspection_id} پیدا نشد."}
-    record = store.add_evaluation(plate, inspection_id, summary)
+    record = store.add_evaluation(plate, inspection_id, summary, extra=extra)
     return {"ok": True, "tracking": record["tracking"],
             "message": f"ارزیابی ثبت شد. شماره رهگیری: {record['tracking']}\n"
                        "مرحله بعدی: اگر خرابی هست، ثبت خرابی کن؛ وگرنه روال همین‌جا کامل است."}
 
 
-def register_fault_step(evaluation_id: str, description: str, subsystem: str = "") -> dict:
+def register_fault_step(evaluation_id: str, description: str, subsystem: str = "", extra: dict | None = None) -> dict:
     """قدم 4: خرابی ثبت کن؛ اول باید ارزیابی ثبت شده باشد."""
     if store.get_evaluation(evaluation_id) is None:
         return {"ok": False, "tracking": None,
                 "message": "نمی‌توانم خرابی ثبت کنم؛ مرحله «ثبت ارزیابی» هنوز انجام نشده است. "
                            f"ارزیابی‌ای با شماره {evaluation_id} پیدا نشد."}
-    record = store.add_fault(evaluation_id, description, subsystem)
+    record = store.add_fault(evaluation_id, description, subsystem, extra=extra)
     return {"ok": True, "tracking": record["tracking"],
             "message": f"خرابی ثبت شد. شماره رهگیری: {record['tracking']}\n"
                        "مرحله بعدی: ثبت درخواست تعمیراتی"}
 
 
 def register_repair_request_step(evaluation_id: str, fault_id: str = "",
-                                 description: str = "") -> dict:
+                                 description: str = "", extra: dict | None = None) -> dict:
     """قدم 5: درخواست تعمیراتی آماده کن؛ اول باید ارزیابی ثبت شده باشد.
 
     درخواست اینجا «ثبت» نمی‌شود؛ فقط یک تاییدیه در انتظار ساخته می‌شود.
     کاربر باید اول گزارش بازدید و بعد تجهیز و خرابی را در پنجره تایید
     ببیند و تایید یا رد کند. تا وقتی تایید نشده، مرحله workflow جلو نمی‌رود.
+    دیتای اضافی (extra) با تاییدیه می‌ماند و موقع تایید، همراه درخواست ثبت می‌شود.
     """
     evaluation = store.get_evaluation(evaluation_id)
     if evaluation is None:
@@ -191,6 +192,7 @@ def register_repair_request_step(evaluation_id: str, fault_id: str = "",
         fault_description=fault["description"] if fault else "",
         description=description,
         inspection=inspection_summary,
+        extra=extra,
     )
     return {"ok": True, "needs_confirmation": True,
             "confirmation_id": pending["confirmation_id"],
@@ -219,7 +221,8 @@ def confirm_repair_request_step(confirmation_id: str, confirmed: bool) -> dict:
         return {"ok": True, "tracking": None,
                 "message": "درخواست تعمیراتی لغو شد و ثبت نشد."}
     record = store.add_repair_request(
-        pending["evaluation_id"], pending["fault_id"], pending["description"])
+        pending["evaluation_id"], pending["fault_id"], pending["description"],
+        extra=pending.get("extra"))
     return {"ok": True, "tracking": record["tracking"],
             "message": f"درخواست تعمیراتی ثبت شد. شماره رهگیری: {record['tracking']}\n"
                        "مرحله بعدی: تایید درخواست"}
@@ -242,7 +245,7 @@ def approve_request_step(request_id: str) -> dict:
                        "مرحله بعدی: ثبت حکم کار (تعمیرگاه + قطعات مورد نیاز)"}
 
 
-def register_work_order_step(request_id: str, shop: str, parts: str) -> dict:
+def register_work_order_step(request_id: str, shop: str, parts: str, extra: dict | None = None) -> dict:
     """قدم 7: حکم کار ثبت کن؛ اول باید درخواست تایید شده باشد."""
     request = store.get_request(request_id)
     if request is None:
@@ -253,7 +256,7 @@ def register_work_order_step(request_id: str, shop: str, parts: str) -> dict:
         return {"ok": False, "tracking": None,
                 "message": f"نمی‌توانم حکم کار ثبت کنم؛ درخواست {request['tracking']} "
                            "هنوز تایید نشده است. اول مرحله «تایید درخواست» را انجام بده."}
-    record = store.add_work_order(request_id, shop, parts)
+    record = store.add_work_order(request_id, shop, parts, extra=extra)
     return {"ok": True, "tracking": record["tracking"],
             "message": f"حکم کار ثبت شد. شماره رهگیری: {record['tracking']}\n"
                        "روال کامل شد."}

@@ -79,10 +79,11 @@ maintenance/memory.py → شمارش توکن + compaction
 | `api.py` | شروع نسخه وب | `chat()` ، `confirm_repair_request()` ، `modules()` ، `records()` |
 | `maintenance/config.py` | خواندن کلیدها از `.env` | `get_setting()` ، `check_config()` |
 | `maintenance/llm.py` | حرف زدن با مدل | `create_client()` ، `ask()` ، `ask_text()` |
-| `maintenance/db.py` | اتصال و ساختار دیتابیس SQLite | `init_db()` ، `connect()` ، `set_db_path()` |
+| `maintenance/db.py` | اتصال و ساختار دیتابیس SQLite | `init_db()` ، `connect()` ، `migrate()` ، `set_db_path()` |
 | `maintenance/store.py` | رکوردها در SQLite (+ تاییدیه‌های در انتظار) | `add_*()` ، `get_*()` ، `list_*()` ، `next_tracking()` ، `add_pending_confirmation()` |
 | `maintenance/workflow.py` | ترتیب قدم‌ها + کنترل | `current_stage()` ، `register_*_step()` ، `confirm_repair_request_step()` |
-| `maintenance/tools.py` | ابزارهای مدل | `register_*()` ، `search_*()` ، `run_tool()` |
+| `maintenance/reports.py` | گزارش‌گیری از دیتابیس (SQL همین‌جاست) | `run_report()` ، `run_sql()` ، `explain_query_plan()` ، `format_result()` |
+| `maintenance/tools.py` | ابزارهای مدل | `register_*()` ، `search_*()` ، `run_report()` ، `run_tool()` |
 | `maintenance/memory.py` | توکن و خلاصه‌سازی | `count_tokens()` ، `needs_compaction()` ، `compact_messages()` |
 | `maintenance/chat.py` | حلقه اصلی چت | `run_chat()` ، `chat_one_turn()` |
 | `evals/langsmith_eval.py` | تست کردن چت‌بات | `answer_question()` ، `score_answer()` |
@@ -205,7 +206,51 @@ maintenance/memory.py → شمارش توکن + compaction
 - اسم «سمند LX» در گاراژ عکس `samand.jpg` می‌گیرد، چون `carImageFor()` با زیررشته
   (includes) اسم را می‌شناسد؛ «پژو» پیش‌فرض `pars.jpg` می‌گیرد.
 
-## ۱۱. تمرین‌های فردا (هر کدام ۵ دقیقه)
+## ۱۱. گزارش‌گیری و دیتای اضافی — داده در context نمی‌آید
+
+**مشکل:** رکوردها زیاد می‌شوند و نمی‌شود همه‌شان را در context مدل گذاشت
+(توکن تمام می‌شود). راه‌حل: داده در دیتابیس می‌ماند؛ وقتی گزارش خواستیم،
+یک کوئری SQL اجرا می‌شود و فقط «نتیجه» (حداکثر ۵۰ ردیف) برمی‌گردد.
+
+**دو راه برای گزارش** (هر دو در `maintenance/reports.py`؛ SQL فقط همین‌جا
+زندگی می‌کند، نه در `tools.py`):
+1. **گزارش آماده** — کوئری از پیش تیون‌شده: فقط ستون‌های لازم (نه `SELECT *`)،
+   جوین روی ستون‌های ایندکس‌دار، سقف ردیف. همیشه اول این‌ها:
+   `pending_approvals` (در انتظار تاییدها)، `faults_by_vehicle`
+   (خرابی‌ها با وضعیت درخواست و حکم کار)، `faults_by_subsystem`،
+   `work_orders_by_shop`، `vehicle_history` (سابقه کامل یک پلاک).
+2. **کوئری آزاد** — وقتی هیچ گزارش آماده‌ای جواب نمی‌دهد، مدل یک `SELECT`
+   می‌نویسد و `run_sql()` با گاردریل اجراش می‌کند: فقط یک کوئری، فقط خواندنی
+   (اتصال `mode=ro`)، بدون `INSERT`/`UPDATE`/`DELETE`/`DROP`، سقف ۵۰ ردیف،
+   تایم‌اوت ۵ ثانیه.
+
+**مثال‌ها:**
+- «چند تا درخواست در انتظار تاییده؟» ← `pending_approvals` ← جواب: ۱ تا، `REQ-001`.
+- «خرابی‌های سمند با وضعیت درخواستش رو نشون بده» ← `faults_by_vehicle` با
+  `plate=123` ← جوین خرابی + درخواست + حکم کار.
+- «کدوم زیرمجموعه بیشترین خرابی رو داشته؟» ← `faults_by_subsystem` ← موتور: ۲، چرخ: ۱.
+
+**ایندکس‌ها (چرا JOIN کند نمی‌شود):** روی ستون‌های جوین و فیلتر
+(`plate` ،`evaluation_id` ،`fault_id` ،`request_id` ،`status`) ایندکس هست.
+بدون ایندکس، هر JOIN یعنی اسکن کامل جدول. با `EXPLAIN QUERY PLAN` می‌شود دید:
+`SEARCH ... USING INDEX` یعنی ایندکس استفاده شد، `SCAN` یعنی اسکن کامل.
+
+**رابطه‌ها (کلید خارجی):** خرابی به ارزیابی وصل است، درخواست به ارزیابی و خرابی،
+حکم کار به درخواست. روی هر اتصال `PRAGMA foreign_keys = ON` است تا رابطه‌ها
+واقعا اعمال شوند؛ مثلا خرابی با `evaluation_id` اشتباه ثبت نمی‌شود.
+(قید FK فقط روی دیتابیس تازه ساخته‌شده هست؛ دیتابیس قدیمی با `migrate()`
+ستون و ایندکس می‌گیرد ولی FK نمی‌گیرد — برای اسکیمای کامل فایل `.db` را
+پاک کن و دوباره اجرا کن؛ داده نمایشی دوباره seed می‌شود.)
+
+**دیتای اضافی (`extra`):** کاربر موقع ثبت چیزی می‌گوید که فیلد ندارد
+(مثلا موقع بازدید: «سطح روغن کم بود»). مدل همان‌جا آن را ساختارمند می‌کند
+و در `extra` می‌گذارد: `{"سطح روغن": "کم"}`. در دیتابیس، هر جدول یک ستون
+`extra_data` (متن JSON) دارد. اصل: ساختار موقع **نوشتن** درمی‌آید، نه موقع
+خواندن — اگر فقط توی توضیحات می‌ماند، بعدا نمی‌شد روش فیلتر یا گزارش گرفت.
+در کوئری آزاد با `json_extract(extra_data, '$.سطح روغن')` خوانده می‌شود.
+اگر یک مورد اضافی مدام تکرار شد، وقتش است که ستون واقعی بشود (ALTER TABLE).
+
+## ۱۲. تمرین‌های فردا (هر کدام ۵ دقیقه)
 
 1. در `.env` مقدار `MAX_TOKENS` را به ۵۰۰ تغییر بده و ببین compaction زودتر اتفاق می‌افتد؟
 2. در `workflow.py` یک قدم جدید اضافه کن: مثلا بعد از حکم کار، قدم «تحویل خودرو» را اضافه کن.

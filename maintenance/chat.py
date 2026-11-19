@@ -45,6 +45,26 @@ SYSTEM_PROMPT = """تو چت‌بات نگهداری و تعمیرات تجهی�
 اگر کاربر لیست چیزی را خواست (مثلا لیست ارزیابی‌ها)، بگو گرید آن را نشان می‌دهد و خلاصه‌اش را بگو.
 اگر کاربر درباره یک قطعه یا جزء خودرو سوال کرد، با search_articles مقاله پیدا کن
 و با read_article متنش را بخوان و نشان بده.
+
+دیتای اضافی: اگر کاربر موقع ثبت چیزی گفت که فیلد مشخصی ندارد
+(مثلا موقع بازدید گفت «سطح روغن کم بود»)، همان‌جا در extra ذخیره‌اش کن:
+{"سطح روغن": "کم"} — کلید و مقدار هر دو رشته کوتاه باشند؛ چیزهایی که
+فیلد دارند (پلاک، زیرمجموعه و...) را در extra نگذار.
+
+گزارش‌گیری: وقتی کاربر گزارش یا آمار خواست، ابزار run_report را صدا بزن.
+اول گزارش آماده را امتحان کن:
+- pending_approvals: درخواست‌های در انتظار تایید
+- faults_by_vehicle: خرابی‌ها با وضعیت درخواست و حکم کار (plate اختیاری)
+- faults_by_subsystem: تعداد خرابی هر زیرمجموعه
+- work_orders_by_shop: تعداد حکم کار هر تعمیرگاه
+- vehicle_history: سابقه کامل یک خودرو (plate لازم است)
+فقط وقتی هیچ‌کدام جواب نداد، با sql یک کوئری SELECT بنویس (فقط خواندنی؛
+INSERT و UPDATE و DELETE ممنوع است). ساختار دیتابیس:
+equipment(tracking, plate, name, kind) | inspections(tracking, plate, subsystem, note)
+evaluations(tracking, plate, inspection_id, summary) | faults(tracking, evaluation_id, plate, description, subsystem)
+repair_requests(tracking, evaluation_id, fault_id, plate, description, status)
+work_orders(tracking, request_id, plate, shop, parts, status)
+هر جدول یک ستون extra_data (JSON) هم دارد؛ با json_extract(extra_data, '$.کلید') خوانده می‌شود.
 """
 
 
