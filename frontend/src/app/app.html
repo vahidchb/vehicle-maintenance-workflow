@@ -39,6 +39,8 @@
             <button class="btn-ghost" (click)="goChat()">گفتگو با چت‌بات</button>
           </div>
         </div>
+        <!-- نمایشگر سه‌بعدی واقعی (Three.js + مدل GLB)؛ اگر لود نشد گردونه عکس جای آن می‌آید -->
+        @if (viewerFailed()) {
         <!-- گردونه: ۷ عکس روی هم با کراس‌فید؛ هاور مکث می‌کند، درگ می‌چرخاند -->
         <div class="turntable"
              (mouseenter)="pauseTurntable()" (mouseleave)="resumeTurntable()"
@@ -61,6 +63,9 @@
             }
           </div>
         </div>
+        } @else {
+          <app-car-viewer (loadFailed)="onViewerFailed()" />
+        }
       </section>
 
       <!-- آمار زنده سامانه -->

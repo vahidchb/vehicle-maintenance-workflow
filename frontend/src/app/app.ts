@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { ApiService, ModuleInfo, PendingConfirmation, StageInfo } from './api.service';
+import { CarViewerComponent } from './car-viewer';
 
 interface ChatMessage {
   role: 'user' | 'bot';
@@ -118,7 +119,7 @@ const TURNTABLE_IMAGES: string[] = [
 
 @Component({
   selector: 'app-root',
-  imports: [FormsModule],
+  imports: [FormsModule, CarViewerComponent],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -127,6 +128,15 @@ export class App {
 
   // --- نما: خانه، گاراژ، چت، سرچ مقاله، گرید، یا نمودار ماژول‌ها ---
   view = signal<View>('home');
+
+  // --- نمایشگر سه‌بعدی صفحه خانه ---
+  // اگر مدل سه‌بعدی لود نشد (فایل نیست یا WebGL نیست)، نمایشگر رویداد
+  // loadFailed می‌فرستد و گردونه عکس به‌جای آن نشان داده می‌شود
+  viewerFailed = signal(false);
+
+  onViewerFailed() {
+    this.viewerFailed.set(true);
+  }
 
   // --- گردونه سه‌بعدی صفحه خانه ---
   // لیست عکس‌ها (برای template؛ ترتیب چرخش در TURNTABLE_IMAGES است)

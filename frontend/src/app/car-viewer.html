@@ -1,0 +1,15 @@
+<!-- صحنه سه‌بعدی — کانوس Three.js با کد به این div اضافه می‌شود -->
+<div class="viewer" #container>
+  @if (state() === 'loading') {
+    <div class="viewer-loading">
+      <div class="spinner"></div>
+      <p>در حال بارگذاری مدل سه‌بعدی…</p>
+    </div>
+  }
+  @if (state() === 'ready') {
+    <button class="explode-btn" (click)="toggleExplode()">
+      {{ exploded() ? 'بازگشت به حالت عادی' : 'نمایش منفجرشده' }}
+    </button>
+    <p class="viewer-hint">برای چرخش بکشید • برای زوم اسکرول کنید</p>
+  }
+</div>
